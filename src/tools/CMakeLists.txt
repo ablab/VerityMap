@@ -1,0 +1,7 @@
+add_subdirectory(bloom)
+add_subdirectory(common)
+add_subdirectory(config_dir_def)
+add_subdirectory(sequences)
+add_subdirectory(ksw2)
+add_subdirectory(sketch)
+add_subdirectory(version)
