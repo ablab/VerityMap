@@ -4,8 +4,6 @@ import sys
 import shutil
 from os.path import abspath, exists, isdir
 
-from slugify import slugify
-
 from py_src.reporting import *
 from py_src.utils import *
 
@@ -131,12 +129,13 @@ def postprocess_chains(assembly):
                 if (ref_end-ref_start) < MIN_CHAIN_LEN:
                     continue
                 num_alignments += 1
-                f.write("seq\t%d\t%d\t%s\t%d\t%d\t%d\n" %
-                        (ref_start, ref_end, slugify(read_name), align_start, align_end, read_lengths[read_name]))
+                f.write("%s\t%d\t%d\t%s\t%d\t%d\t%d\n" %
+                        (assembly.contig_name, ref_start, ref_end, read_name, align_start, align_end, read_lengths[read_name]))
             all_errors.extend(selected_errors)
 
     print("  Total %d alignments" % num_alignments)
     print("  Longest chains saved to %s" % assembly.bed_fname)
+    print("  SAM file with alignments saved to %s" % assembly.sam_fname)
     return all_errors
 
 
@@ -146,11 +145,10 @@ def do(assemblies, reads_fname, datatype, out_dir, threads, no_reuse):
     print("Read mapping started...")
     assemblies_to_process = [assembly for assembly in assemblies if not exists(assembly.bed_fname) or no_reuse]
     for assembly in assemblies_to_process:
-        run_mapper(assembly, reads_fname, out_dir, max(1, threads // len(assemblies)), datatype)
+        run_mapper(assembly, reads_fname, out_dir, threads, datatype)
     all_data = []
     for assembly in assemblies:
         errors = postprocess_chains(assembly)
         coverage = calculate_coverage(get_fasta_len(assembly.fname), assembly.bed_fname)
         all_data.append((errors, coverage))
     make_plotly_html(assemblies, all_data, out_dir)
-    print("Read mapping finished")

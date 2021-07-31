@@ -63,16 +63,15 @@ def make_plotly_html(assemblies, all_data, out_dir):
             if vals[i] > MIN_AF:
                 new_errors.append((i*step, len(filt_reads), data['coverage'][i], data['coverage'][i]+data['reads'][i], mean_diff2, stddev2))
 
-        plot_idx += 1
         real_x = [i*step for i in range(len(coverage))]
         fig.add_trace(
             go.Scatter(x=real_x, y=vals, showlegend=False, customdata = customdata,
                        hovertemplate="%{customdata[0]} out of %{customdata[1]} reads, "
-                                     "mean diff %{customdata[2]:.2f} std deviation %{customdata[3]:.2f}"), row=plot_idx, col=1)
+                                     "mean diff %{customdata[2]:.2f} std deviation %{customdata[3]:.2f}"), row=plot_idx+1, col=1)
         fig.update_yaxes(range=[-3,105],title_text="% deviated reads", titlefont=dict(size=18), tickfont=dict(size=18),
-                         hoverformat="d", row=plot_idx, col=1)
+                         hoverformat="d", row=plot_idx+1, col=1)
         fig.update_xaxes(title_text="Position", titlefont=dict(size=18), tickfont=dict(size=18), hoverformat="d",
-                         row=plot_idx, col=1)
+                         row=plot_idx+1, col=1)
         bed_fname = join(out_dir, asm_id + "_kmers_dist_diff.bed")
         prev_i = 0
         prev_diff = 0
@@ -111,6 +110,8 @@ def make_plotly_html(assemblies, all_data, out_dir):
                         f.write(r + "\n")
                     prev_i = 0
                     support_reads = set()
+        plot_idx += 1
     plot_fname = join(out_dir, "kmers_dist_diff.html")
     fig.write_html(plot_fname)
     print("  Difference in k-mer distances plot saved to %s" % plot_fname)
+

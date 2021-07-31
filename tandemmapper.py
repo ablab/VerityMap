@@ -46,6 +46,9 @@ def main(assembly_fnames, reads_fname, labels, out_dir, threads, no_reuse, datat
     if not isdir(out_dir):
         os.makedirs(out_dir)
     do(assemblies, reads_fname, datatype, out_dir, threads, no_reuse)
+    date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print()
+    print("%s TandemMapper2 finished!" % date)
 
 if __name__ == '__main__':
     main()
