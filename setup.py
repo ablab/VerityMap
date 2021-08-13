@@ -13,7 +13,7 @@ from setuptools import setup
 from distutils.command.build import build as DistutilsBuild
 from distutils.spawn import find_executable
 
-from tandem_mapper.__version__ import __version__
+from tandemmapper.__version__ import __version__
 
 
 # Make sure we're running from the setup.py directory.
@@ -58,10 +58,10 @@ setup(
     license='GNU General Public License v3.0',
     install_requires=requirements,
     packages=['tandemmapper'],
-    package_dir={'tandemmapper': 'tandem_mapper'},
+    package_dir={'tandemmapper': 'tandemmapper'},
     package_data={'tandemmapper': ['build/bin/tandem_mapper', 'config/*', '*', 'py_src/*', 'test_dataset/*',]},
     entry_points={
-        'console_scripts': ['tandemmapper=tandem_mapper.tandemmapper:main']
+        'console_scripts': ['tandemmapper=tandemmapper.tandemmapper:main']
     },
     cmdclass={'build': MakeBuild}
 )
