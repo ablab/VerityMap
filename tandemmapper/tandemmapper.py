@@ -15,7 +15,9 @@ from tandemmapper.py_src.mapper import do
 @click.option('-o', 'out_dir',  type=click.Path(), required=True, help='Output folder')
 @click.option('-t', 'threads', type=click.INT, help='Threads', default=4)
 @click.option('-d', 'datatype', type=click.Choice(['hifi', 'ont']), help='Sequencing platform, supported types are: '
-                                                                         '"hifi" for PacBio HiFi reads and "ont" for ONT reads')
+                                                                         '"hifi" for PacBio HiFi reads and "ont" for ONT reads.'
+                                                                         'Please note that "ont" mode is experimental and '
+                                                                         'should be used with extra care')
 @click.option('-f', '--no-reuse', 'no_reuse', is_flag=True, help='Do not reuse old files')
 @click.option('-l', 'labels', help='Comma separated list of assembly labels')
 def main(assembly_fnames, reads_fname, labels, out_dir, threads, no_reuse, datatype):
@@ -30,9 +32,7 @@ def main(assembly_fnames, reads_fname, labels, out_dir, threads, no_reuse, datat
         sys.exit(2)
 
     if not datatype:
-        print('ERROR! You should specify what sequencing platform you used '
-              '(options are "hifi" for PacBio HiFi reads and "ont" for ONT reads)')
-        sys.exit(2)
+        datatype = "hifi"
 
     list_labels = [None] * len(assembly_fnames)
     if labels:
@@ -49,6 +49,7 @@ def main(assembly_fnames, reads_fname, labels, out_dir, threads, no_reuse, datat
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print()
     print("%s TandemMapper2 finished!" % date)
+
 
 if __name__ == '__main__':
     main()

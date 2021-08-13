@@ -1,4 +1,3 @@
-
 from Bio import SeqIO
 
 def get_fasta_len(fasta_fname):

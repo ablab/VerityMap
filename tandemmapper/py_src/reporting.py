@@ -1,9 +1,6 @@
-import base64
 from os.path import join
-from collections import Counter, defaultdict
 
 import numpy as np
-
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
