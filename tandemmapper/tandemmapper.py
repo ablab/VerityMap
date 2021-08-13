@@ -5,8 +5,8 @@ from os.path import isdir, abspath
 
 import click as click
 
-from py_src.assembly import Assembly
-from py_src.mapper import do
+from tandemmapper.py_src.assembly import Assembly
+from tandemmapper.py_src.mapper import do
 
 
 @click.command()

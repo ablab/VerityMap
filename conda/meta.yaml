@@ -1,0 +1,41 @@
+package:
+  name: "tandemmapper"
+  version: "2.0.0"
+
+source:
+  # Relative path to the parent directory.
+  path: ..
+
+build:
+  number: 0
+  script: {{ PYTHON }} -m pip install . -vv --ignore-installed --no-deps
+  # script: make install PREFIX=${PREFIX}
+
+requirements:
+  host:
+    - python
+    - setuptools
+
+  build:
+    - python
+    - {{ compiler('cxx') }}
+    - llvm-openmp  # [osx]
+    - libgomp  # [linux]
+    - make
+    - cmake
+
+  run:
+    - python
+    - biopython
+    - click
+    - numpy
+    - plotly
+    - python-slugify
+
+test:
+  commands:
+    - make test_launch
+
+about:
+  home: https://github.com/ablab/TandemMapper2
+  license: GPLv3

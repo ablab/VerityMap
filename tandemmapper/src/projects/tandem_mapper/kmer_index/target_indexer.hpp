@@ -15,8 +15,11 @@
 
 namespace tandem_mapper::kmer_index {
 
+    using Counter = std::unordered_map<Config::HashParams::htype, size_t>;
+
     kmer_index::IndexedContigs
-    get_indexed_targets(const std::vector<Contig> & targets,
+    get_indexed_targets(const std::vector<Contig> & queries,
+                        const std::vector<Contig> & targets,
                         const std::filesystem::path & outdir,
                         const RollingHash<Config::HashParams::htype> & hasher,
                         const size_t nthreads,
@@ -39,7 +42,7 @@ namespace tandem_mapper::kmer_index {
             return indexed_targets;
         }
 
-        const std::vector<KmerIndex> kmers_indexes = [&targets, &hasher, &common_params, &kmer_indexer_params,
+        const std::vector<KmerIndex> kmers_indexes = [&queries, &targets, &nthreads, &hasher, &common_params, &kmer_indexer_params,
                                                              &index_path, &logger] {
             if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::exact) {
                 logger.info() << "Getting exact kmer indexes..." << std::endl;
@@ -53,7 +56,7 @@ namespace tandem_mapper::kmer_index {
 
                 std::vector<KmerIndex> kmers_indexes =
                         sketch_contigs::get_rare_kmers_approx<htype>(
-                                targets, hasher, common_params, kmer_indexer_params);
+                                targets, queries, nthreads, hasher, common_params, kmer_indexer_params);
                 logger.info() << "Finished getting approximate kmer indexes" << std::endl;
                 return kmers_indexes;
             }

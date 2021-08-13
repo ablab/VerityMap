@@ -21,6 +21,8 @@
 
 namespace tandem_mapper {
 
+    using Counter = std::unordered_map<Config::HashParams::htype, size_t>;
+
     chaining::Chains _map_single_strand(const kmer_index::IndexedContig & indexed_target,
                                         const Contig & query,
                                         const dna_strand::Strand & query_strand,
@@ -162,8 +164,10 @@ namespace tandem_mapper {
                           << " from " << target_path << std::endl;
         }
 
+        //const Counter query_counter = kmer_index::_get_readset_counter(hasher, queries);
+        //logger.info() << query_counter.size();
         const kmer_index::IndexedContigs indexed_targets =
-                kmer_index::get_indexed_targets(targets, outdir, hasher, nthreads, logger, index_path,
+                kmer_index::get_indexed_targets(queries, targets, outdir, hasher, nthreads, logger, index_path,
                                                 config.common_params, config.kmer_indexer_params);
 
         const auto uncovered_fn = outdir / "norarekmers.bed";

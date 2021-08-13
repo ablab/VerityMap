@@ -40,6 +40,30 @@ namespace tandem_mapper::kmer_index {
         return counters;
     }
 
+    Counter _get_readset_counter(const RollingHash<Config::HashParams::htype> & hasher,
+                                 const std::vector<Contig> & contigs) {
+        std::vector<Sequence> seqs;
+        for (const auto & contig : contigs) {
+            seqs.emplace_back(contig.seq);
+        }
+        Counter counter;
+        for (auto it = seqs.cbegin(); it != seqs.cend(); ++it) {
+            const Sequence & seq = *it;
+            if (seq.size() < hasher.k) {
+                continue;
+            }
+            KWH<Config::HashParams::htype> kwh(hasher, seq, 0);
+            while(true) {
+                counter[kwh.hash()] += 1;
+                if (!kwh.hasNext()) {
+                    break;
+                }
+                kwh = kwh.next();
+            }
+        }
+        return counter;
+    }
+
     std::unordered_map<Config::HashParams::htype, std::unordered_set<size_t>>
     _get_hash2seqs(const Counters & counters) {
         std::unordered_map<Config::HashParams::htype, std::unordered_set<size_t>> hash2seqs;
