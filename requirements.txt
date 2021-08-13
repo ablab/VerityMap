@@ -2,3 +2,4 @@ biopython
 click
 numpy
 plotly
+python-slugify
