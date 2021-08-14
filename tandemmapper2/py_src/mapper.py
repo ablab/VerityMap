@@ -5,8 +5,8 @@ import shutil
 from collections import defaultdict
 from os.path import abspath, exists, isdir, join
 
-from tandemmapper.py_src.reporting import *
-from tandemmapper.py_src.utils import *
+from tandemmapper2.py_src.reporting import *
+from tandemmapper2.py_src.utils import *
 
 source_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 MAPPER_BIN = join(source_dir, "build/bin/tandem_mapper")

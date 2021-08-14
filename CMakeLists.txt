@@ -7,7 +7,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-#set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}://home/amikheenko/miniconda2/envs/isoquant/conda-bld/tandemmapper_1628860482685/_h_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold/lib/pkgconfig")
+#set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}://home/amikheenko/miniconda2/envs/isoquant/conda-bld/tandemmapper2_1628860482685/_h_env_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold_placehold/lib/pkgconfig")
 set(CMAKE_CXX_FLAGS "-ggdb3 -pthread -lz -lrt" )
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
@@ -15,13 +15,13 @@ set(CMAKE_SHARED_LINKER_FLAGS "-static-libgcc -static-libstdc++ -Wall -Wc++-comp
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 
 # Define various dirs
-set(MAIN_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tandemmapper/src)
+set(MAIN_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tandemmapper2/src)
 # set(LIB_SRC_DIR ${MAIN_SRC_DIR}/lib)
 set(PROJECTS_SRC_DIR ${MAIN_SRC_DIR}/projects)
 # set(TESTS_SRC_DIR ${MAIN_SRC_DIR}/tests)
 set(TOOLS_SRC_DIR ${MAIN_SRC_DIR}/tools)
 
-set(TM_SRC_DIR ${PROJECTS_SRC_DIR}/tandemmapper)
+set(TM_SRC_DIR ${PROJECTS_SRC_DIR}/tandemmapper2)
 
 
 
@@ -55,7 +55,7 @@ configure_file("${TOOLS_SRC_DIR}/version/version.cpp.in" ${TOOLS_SRC_DIR}/versio
 set(VERSION ${TOOLS_SRC_DIR}/version/version.cpp)
 
 # generate config_dir_def
-set(CONFIG_DIR_DEF ${CMAKE_CURRENT_SOURCE_DIR}/tandemmapper/config)
+set(CONFIG_DIR_DEF ${CMAKE_CURRENT_SOURCE_DIR}/tandemmapper2/config)
 configure_file("${TOOLS_SRC_DIR}/config_dir_def/config_dir_def.cpp.in" ${TOOLS_SRC_DIR}/config_dir_def/config_dir_def.cpp @ONLY)
 set(CONFIG_DIR_DEF_CPP ${TOOLS_SRC_DIR}/config_dir_def/config_dir_def.cpp)
 
@@ -63,5 +63,5 @@ include_directories(${TOOLS_SRC_DIR})
 # include_directories(${TESTS_SRC_DIR})
 include_directories(${PROJECT_SRC_DIR})
 
-add_subdirectory(tandemmapper/src/projects)
-add_subdirectory(tandemmapper/src/tools)
+add_subdirectory(tandemmapper2/src/projects)
+add_subdirectory(tandemmapper2/src/tools)

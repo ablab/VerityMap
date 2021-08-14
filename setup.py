@@ -57,11 +57,11 @@ setup(
     author_email='al.miheenko@gmail.com',
     license='GNU General Public License v3.0',
     install_requires=requirements,
-    packages=['tandemmapper'],
-    package_dir={'tandemmapper': 'tandemmapper'},
-    package_data={'tandemmapper': ['build/bin/tandem_mapper', 'config/*', '*', 'py_src/*', 'test_dataset/*',]},
+    packages=['tandemmapper2'],
+    package_dir={'tandemmapper2': 'tandemmapper2'},
+    package_data={'tandemmapper2': ['build/bin/tandem_mapper', 'config/*', '*', 'py_src/*', 'test_dataset/*',]},
     entry_points={
-        'console_scripts': ['tandemmapper=tandemmapper.tandemmapper:main']
+        'console_scripts': ['tandemmapper2=tandemmapper2.tandemmapper2:main']
     },
     cmdclass={'build': MakeBuild}
 )

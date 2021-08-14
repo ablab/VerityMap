@@ -5,19 +5,19 @@ build_type?="Release"
 all: tandem_mapper
 
 cmake:
-	mkdir -p tandemmapper/build
-	cd tandemmapper/build && cmake .. -DCMAKE_BUILD_TYPE="${build_type}"
+	mkdir -p tandemmapper2/build
+	cd tandemmapper2/build && cmake .. -DCMAKE_BUILD_TYPE="${build_type}"
 
 tandem_mapper: cmake
-	$(MAKE) -C tandemmapper/build all
-	mkdir -p tandemmapper/build/bin && ln -s -f $(abspath tandemmapper/build/src/projects/tandem_mapper/tandem_mapper) tandemmapper/build/bin/tandem_mapper
+	$(MAKE) -C tandemmapper2/build all
+	mkdir -p tandemmapper2/build/bin && ln -s -f $(abspath tandemmapper2/build/src/projects/tandem_mapper/tandem_mapper) tandemmapper2/build/bin/tandem_mapper
 
 test_launch: tandem_mapper
-	tandemmapper/build/bin/tandem_mapper \
-		--target tandemmapper/test_dataset/test_target.fasta \
-		--queries tandemmapper/test_dataset/test_query.fasta -o tandemmapper/test_dataset/test_launch
-	grep -q "Thank you for using TandemMapper2!" tandemmapper/test_dataset/test_launch/tandem_mapper.log
+	tandemmapper2/build/bin/tandem_mapper \
+		--target tandemmapper2/test_dataset/test_target.fasta \
+		--queries tandemmapper2/test_dataset/test_query.fasta -o tandemmapper2/test_dataset/test_launch
+	grep -q "Thank you for using TandemMapper2!" tandemmapper2/test_dataset/test_launch/tandem_mapper.log
 
 clean:
-	-rm -r tandemmapper/build
-	-rm -r tandemmapper/test_dataset/test_launch
+	-rm -r tandemmapper2/build
+	-rm -r tandemmapper2/test_dataset/test_launch
