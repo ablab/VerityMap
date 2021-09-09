@@ -118,7 +118,7 @@ namespace io {
                         ss << seq;
                         cnt += 1;
                     }
-                    next = {ss.str(), std::move(trim(id.substr(1, id.size() - 1)))};
+                    next = {ss.str(), std::move(trim(id.substr(1, id.find(" "))))};
                     choose_next_pos(0);
                     cur_start = 0;
                     if(fastq) {
