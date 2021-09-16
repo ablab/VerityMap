@@ -172,8 +172,8 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
                     }
                     kwh = kwh.next();
                 }
-                std::cout <<  " uniq " << uniq_kmers.size() << std::endl;
-                /*
+
+                if (readset.size() == 0) continue;
                 std::vector<sketch::cm::ccm_t> cms_list;
                 std::vector<int> occ_list(nthreads, 0);
 
@@ -181,17 +181,17 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
                 for (int i = 0; i <= nthreads; i++) {
                     sketch::cm::ccm_t cms_tmp{static_cast<int>(ceil(log2(static_cast<double>(max_read_cnt)))),
                                             static_cast<int>(ceil(log2(std::exp(1) *
-                                                                          static_cast<double>(uniq_kmers.size()/nthreads)))),
+                                                                          static_cast<double>(uniq_kmers.size())))),
                                             5};
                     cms_list.emplace_back(cms_tmp);
                 }
                 omp_set_num_threads(nthreads);
                 #pragma omp parallel for
                 for (const Contig & contig : readset) {
-                    const short ithread  = omp_get_thread_num();
                     if (contig.size() < hasher.k) {
                         continue;
                     }
+                    const short ithread  = omp_get_thread_num();
                     KWH<htype> kwh(hasher, contig.seq, 0);
                     while(true) {
                         const htype fhash = kwh.get_fhash();
@@ -211,6 +211,7 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
                     }
                 };
                 int total_occ = accumulate(occ_list.begin(), occ_list.end(), 0);
+                double thresh_read_cnt = total_occ/uniq_kmers.size()*1.5;
                 sketch::cm::ccm_t cmsq(static_cast<int>(ceil(log2(static_cast<double>(max_read_cnt)))),
                                    static_cast<int>(ceil(log2(std::exp(1) *
                                               static_cast<double>(uniq_kmers.size())))),5);
@@ -218,13 +219,12 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
                     cmsq += cms_tmp;
                 }
 
-                double thresh_read_cnt = total_occ/uniq_kmers.size()*1.5;
-                std::cout << time.get()<<  " combined cms " << thresh_read_cnt << std::endl;
-                std::cout << " index " << kmer_index.size() << std::endl;
                 for (const htype hash : uniq_kmers) {
-                    const size_t rcnt{cmsq.est_count(hash)};
-                    if (rcnt >= max_read_cnt) kmer_index.erase(hash);
-                }*/
+                    size_t rcnt = {cmsq.est_count(hash)};
+                    if (rcnt >= thresh_read_cnt) {
+                        kmer_index.erase(hash);
+                    }
+                }
             }
             return kmer_indexes;
         }

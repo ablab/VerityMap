@@ -140,6 +140,7 @@ namespace tandem_mapper {
                     const std::filesystem::path & outdir,
                     const bool to_compress,
                     const bool only_index,
+                    const bool careful_mode,
                     const size_t nthreads,
                     logging::Logger & logger,
                     const std::string & cmd,
@@ -151,8 +152,8 @@ namespace tandem_mapper {
         }
 
         io::SeqReader queries_reader(queries_path);
-        std::vector<Contig> queries{queries_reader.readAllContigs()};
-        logger.info() << "Queries from " << queries_path << ", total " << queries.size() << " sequences " << std::endl;
+        std::vector<Contig> queries;
+        if (careful_mode) queries = queries_reader.readAllContigs();
 
         const RollingHash<Config::HashParams::htype> hasher(config.common_params.k, config.hash_params.base);
 
@@ -177,6 +178,9 @@ namespace tandem_mapper {
         logger.info() << "Finished exporting long (>= " << config.kmer_indexer_params.min_uncovered_len << " bp) "
                       << "regions without rare k-mers to " << uncovered_fn << std::endl;
         uncovered_os.close();
+
+        if (!careful_mode) queries = queries_reader.readAllContigs();
+        logger.info() << "Queries from " << queries_path << ", total " << queries.size() << " sequences " << std::endl;
 
         if (only_index) {
             if (to_compress) {

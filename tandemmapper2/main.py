@@ -5,8 +5,8 @@ from os.path import isdir, abspath
 
 import click as click
 
-from tandemmapper.py_src.assembly import Assembly
-from tandemmapper.py_src.mapper import do
+from tandemmapper2.py_src.assembly import Assembly
+from tandemmapper2.py_src.mapper import do
 
 
 @click.command()
@@ -19,8 +19,9 @@ from tandemmapper.py_src.mapper import do
                                                                          'Please note that "ont" mode is experimental and '
                                                                          'should be used with extra care')
 @click.option('-f', '--no-reuse', 'no_reuse', is_flag=True, help='Do not reuse old files')
+@click.option('--careful', 'is_careful', is_flag=True, help='Run mapper in a careful mode to better detect inconsistencies. Can be time- and memory-consuming. Not recommended to run on the whole genome. ')
 @click.option('-l', 'labels', help='Comma separated list of assembly labels')
-def main(assembly_fnames, reads_fname, labels, out_dir, threads, no_reuse, datatype):
+def main(assembly_fnames, reads_fname, labels, out_dir, threads, no_reuse, is_careful, datatype):
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print("%s TandemMapper2 started" % date)
     if not reads_fname:
@@ -45,7 +46,7 @@ def main(assembly_fnames, reads_fname, labels, out_dir, threads, no_reuse, datat
     out_dir = abspath(out_dir)
     if not isdir(out_dir):
         os.makedirs(out_dir)
-    do(assemblies, reads_fname, datatype, out_dir, threads, no_reuse)
+    do(assemblies, reads_fname, datatype, out_dir, threads, no_reuse, is_careful)
     date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print()
     print("%s TandemMapper2 finished!" % date)

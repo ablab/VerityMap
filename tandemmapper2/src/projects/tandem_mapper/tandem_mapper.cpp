@@ -16,7 +16,7 @@
 
 int main(int argc, char ** argv) {
     CLParser parser {{"output-dir=", "target=", "queries=", "threads=40",
-                      "compress", "only-index", "index=none", "config=hifi"}, {},
+                      "compress", "only-index", "careful", "index=none", "config=hifi"}, {},
             {"o=output-dir", "t=threads"}};
     parser.parseCL(argc, argv);
     if (!parser.check().empty()) {
@@ -61,6 +61,7 @@ int main(int argc, char ** argv) {
 
     bool to_compress = parser.getCheck("compress");
     bool only_index = parser.getCheck("only-index");
+    bool careful_mode = parser.getCheck("careful");
 
 
     const std::filesystem::path index_path = [&parser] {
@@ -93,7 +94,7 @@ int main(int argc, char ** argv) {
 
 
     tandem_mapper::tandem_map(target_path, queries_path, output_dir,
-                              to_compress, only_index, nthreads, logger, cmd, index_path, config);
+                              to_compress, only_index, careful_mode, nthreads, logger, cmd, index_path, config);
 
     logger.info() << "Thank you for using TandemMapper2!" << std::endl;
 }
