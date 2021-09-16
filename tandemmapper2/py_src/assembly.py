@@ -6,7 +6,7 @@ class Assembly:
     def __init__(self, fname=None, name=None, out_dir=None):
         self.fname = fname
         self.real_coords = None
-        self.label = name or slugify(splitext(basename(fname))[0])
+        self.label = name or splitext(basename(fname))[0]
         self.name = slugify(splitext(basename(fname))[0])
         self.contig_name = "contig"
         self.chains_fname = join(out_dir, "%s.txt" % self.name)

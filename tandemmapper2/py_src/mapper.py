@@ -34,11 +34,10 @@ def run_mapper(assembly, reads_fname, out_dir, threads, datatype):
               % source_dir)
         sys.exit(2)
 
-    print('Start mapping')
     cmd = [MAPPER_BIN,
            '--target', assembly.fname, '--queries', reads_fname,
            '-o',join(out_dir, 'tandem_mapper'), '-t', str(threads), '--config', datatype]
-    #print(" ".join(cmd))
+    # print(" ".join(cmd))
     subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
     output_fname = join(out_dir, 'tandem_mapper', 'chains.tsv')
     sam_fname = join(out_dir, 'tandem_mapper', 'alignments.sam')
@@ -56,16 +55,15 @@ def postprocess_chains(assembly):
             fs = line.split()
             if "Aln" in line and len(fs) >= 5:
                 read_name, ref_name, align_start, align_end, read_len, ref_start, ref_end = fs[1:8]
-                assembly.contig_name = ref_name
                 align_start, align_end, read_len, ref_start, ref_end = map(int, (align_start, align_end, read_len, ref_start, ref_end))
                 read_name = read_name.replace('-','')
                 read_lengths[read_name] = read_len
-                read_alignments[read_name].append((ref_start, ref_end, align_start, align_end))
+                read_alignments[read_name].append((ref_name, ref_start, ref_end, align_start, align_end))
             elif len(fs) >= 2:
                 read_pos, ref_pos = int(fs[0]), int(fs[1])
-                read_seeds[read_name][(ref_start, ref_end, align_start, align_end)].append((read_pos, ref_pos))
+                read_seeds[read_name][(ref_name, ref_start, ref_end, align_start, align_end)].append((read_pos, ref_pos))
     num_alignments = 0
-    all_errors = []
+    all_errors = defaultdict(list)
     with open(assembly.bed_fname, "w") as f:
         for read_name, aligns in read_alignments.items():
             max_kmers = 0
@@ -79,11 +77,12 @@ def postprocess_chains(assembly):
                 best_kmers = 0
                 best_errors = []
                 cur_errors = []
+                ref_name = align[0]
                 if len(seeds) >= MIN_CHAIN_KMERS:
                     new_chains = []
                     breakpoints = []
                     for i in range(1, len(seeds)):
-                        ref_s, ref_e, aln_s, aln_e =seeds[i-1][1],seeds[i][1],seeds[i-1][0],seeds[i][0]
+                        ref_s, ref_e, aln_s, aln_e = seeds[i-1][1],seeds[i][1],seeds[i-1][0],seeds[i][0]
                         ref_diff = abs(ref_e - ref_s)
                         read_diff = abs(aln_e - aln_s)
                         max_diff = MAX_DIFF
@@ -124,6 +123,7 @@ def postprocess_chains(assembly):
                         max_kmers = best_kmers
                         selected_chain = best_chain
                         selected_errors = best_errors
+                        best_ref = ref_name
 
             for c in selected_chain:
                 ref_start, ref_end, align_start, align_end = c
@@ -131,8 +131,8 @@ def postprocess_chains(assembly):
                     continue
                 num_alignments += 1
                 f.write("%s\t%d\t%d\t%s\t%d\t%d\t%d\n" %
-                        (assembly.contig_name, ref_start, ref_end, read_name, align_start, align_end, read_lengths[read_name]))
-            all_errors.extend(selected_errors)
+                        (best_ref, ref_start, ref_end, read_name, align_start, align_end, read_lengths[read_name]))
+            all_errors[ref_name].extend(selected_errors)
 
     print("  Total %d alignments" % num_alignments)
     print("  Longest chains saved to %s" % assembly.bed_fname)
@@ -150,6 +150,6 @@ def do(assemblies, reads_fname, datatype, out_dir, threads, no_reuse):
     all_data = []
     for assembly in assemblies:
         errors = postprocess_chains(assembly)
-        coverage = calculate_coverage(get_fasta_len(assembly.fname), assembly.bed_fname)
+        coverage = calculate_coverage(get_fasta_lenghts(assembly.fname), assembly.bed_fname)
         all_data.append((errors, coverage))
     make_plotly_html(assemblies, all_data, out_dir)
