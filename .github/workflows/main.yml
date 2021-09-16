@@ -24,9 +24,13 @@ jobs:
     - name: Build
       working-directory: ${{github.workspace}}
       shell: bash
-      run: make build_type=$BUILD_TYPE
+      run: |
+      cd tandemmapper2
+      make build_type=$BUILD_TYPE
 
     - name: TestLaunch
       working-directory: ${{github.workspace}}
       shell: bash
-      run: make test_launch
+      run: |
+      cd tandemmapper2
+      make test_launch
