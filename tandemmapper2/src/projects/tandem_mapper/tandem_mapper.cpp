@@ -74,12 +74,14 @@ int main(int argc, char ** argv) {
     }();
 
 
-    const std::filesystem::path config_fn = [&parser, &logger] {
+    const std::filesystem::path binary_path = argv[0];
+    const std::filesystem::path config_fn = [&parser, &logger, &binary_path] {
         std::string config = parser.getValue("config");
+        std::filesystem::path dirpath = binary_path.parent_path();
         if (config == "hifi") {
-            return tools::config_dir_def::CONFIG_DIR_DEF / "config_tm2_hifi.tsv";
+            return dirpath / "../../config/config_tm2_hifi.tsv";
         } else if (config == "ont") {
-            return tools::config_dir_def::CONFIG_DIR_DEF / "config_tm2_ont.tsv";
+            return dirpath / "../../config/config_tm2_ont.tsv";
         }
         return static_cast<std::filesystem::path>(config);
     }();
