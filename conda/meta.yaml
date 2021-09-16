@@ -1,5 +1,5 @@
 package:
-  name: "tandemmapper"
+  name: "tandemmapper2"
   version: "2.0.0"
 
 source:
@@ -15,10 +15,12 @@ requirements:
   host:
     - python
     - setuptools
+    - zlib
 
   build:
-    - python
-    - {{ compiler('cxx') }}
+    - gcc_linux-64==9.4.0  # [linux]
+    - gxx_linux-64==9.4.0  # [linux]
+    - llvm # [osx]
     - llvm-openmp  # [osx]
     - libgomp  # [linux]
     - make
@@ -26,15 +28,16 @@ requirements:
 
   run:
     - python
+    - python-slugify
     - biopython
     - click
     - numpy
     - plotly
-    - python-slugify
+    - zlib
 
 test:
   commands:
-    - make test_launch
+    - tandemmapper2 --help 
 
 about:
   home: https://github.com/ablab/TandemMapper2
