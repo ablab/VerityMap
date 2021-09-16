@@ -26,7 +26,7 @@ def make_mapper():
     print('Mapper is compiled successful!')
 
 
-def run_mapper(assembly, reads_fname, out_dir, threads, datatype):
+def run_mapper(assembly, reads_fname, out_dir, threads, datatype, is_careful):
     try:
         make_mapper()
     except:
@@ -37,7 +37,7 @@ def run_mapper(assembly, reads_fname, out_dir, threads, datatype):
     cmd = [MAPPER_BIN,
            '--target', assembly.fname, '--queries', reads_fname,
            '-o',join(out_dir, 'tandem_mapper'), '-t', str(threads), '--config', datatype]
-    # print(" ".join(cmd))
+    if is_careful: cmd += ['--careful']
     subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
     output_fname = join(out_dir, 'tandem_mapper', 'chains.tsv')
     sam_fname = join(out_dir, 'tandem_mapper', 'alignments.sam')
@@ -53,13 +53,13 @@ def postprocess_chains(assembly):
     with open(assembly.chains_fname) as f:
         for line in f:
             fs = line.split()
-            if "Aln" in line and len(fs) >= 5:
+            if "Aln" in line and len(fs) >= 8:
                 read_name, ref_name, align_start, align_end, read_len, ref_start, ref_end = fs[1:8]
                 align_start, align_end, read_len, ref_start, ref_end = map(int, (align_start, align_end, read_len, ref_start, ref_end))
                 read_name = read_name.replace('-','')
                 read_lengths[read_name] = read_len
                 read_alignments[read_name].append((ref_name, ref_start, ref_end, align_start, align_end))
-            elif len(fs) >= 2:
+            elif "Aln" not in line and len(fs) >= 2:
                 read_pos, ref_pos = int(fs[0]), int(fs[1])
                 read_seeds[read_name][(ref_name, ref_start, ref_end, align_start, align_end)].append((read_pos, ref_pos))
     num_alignments = 0
@@ -140,13 +140,13 @@ def postprocess_chains(assembly):
     return all_errors
 
 
-def do(assemblies, reads_fname, datatype, out_dir, threads, no_reuse):
+def do(assemblies, reads_fname, datatype, out_dir, threads, no_reuse, is_careful):
     print("")
     print("*********************************")
     print("Read mapping started...")
     assemblies_to_process = [assembly for assembly in assemblies if not exists(assembly.bed_fname) or no_reuse]
     for assembly in assemblies_to_process:
-        run_mapper(assembly, reads_fname, out_dir, threads, datatype)
+        run_mapper(assembly, reads_fname, out_dir, threads, datatype, is_careful)
     all_data = []
     for assembly in assemblies:
         errors = postprocess_chains(assembly)
