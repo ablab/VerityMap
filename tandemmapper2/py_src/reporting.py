@@ -27,9 +27,9 @@ def make_plotly_html(assemblies, all_data, out_dir):
         open(join(out_dir, asm.label + "_errors.bed"), "w")
 
     for ref_name in all_refs:
+        fig = make_subplots(rows=len(all_data), cols=1,
+                            subplot_titles=[a.label for a in assemblies])
         for plot_idx, (errors, coverage) in enumerate(all_data):
-            fig = make_subplots(rows=len(all_data), cols=1,
-                                subplot_titles=[a.label for a in assemblies])
             asm_id = assemblies[plot_idx].label
             customdata = []
             data = dict()
@@ -68,7 +68,7 @@ def make_plotly_html(assemblies, all_data, out_dir):
                 diffs[i] = mean_diff2
                 customdata.append((len(filt_reads), data['coverage'][i]+data['reads'][i], mean_diff2, stddev2))
                 if vals[i] > MIN_AF:
-                    new_errors.append((i*step, len(filt_reads), data['coverage'][i], data['coverage'][i]+data['reads'][i], mean_diff2, stddev2))
+                    new_errors.append((ref_name, i*step, len(filt_reads), data['coverage'][i], data['coverage'][i]+data['reads'][i], mean_diff2, stddev2))
 
             real_x = [i*step for i in range(len(data['coverage']))]
             fig.add_trace(
