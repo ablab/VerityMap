@@ -2,7 +2,7 @@ base    239
 k   51
 min_uncovered_len   5000
 min_end_ident   0.9
-max_rare_cnt_target 10
+max_rare_cnt_target 30
 max_rare_cnt_query  1
 k_step_size 10
 k_window_size   100000
