@@ -13,7 +13,7 @@ exp_base    1
 nhash   5
 min_matches 20
 min_score   0
-max_top_score_prop  0.8
+max_top_score_prop  0.9
 max_jump    100000
 misassembly_penalty_base    1000
 diff_penalty_mult   1
