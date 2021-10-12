@@ -1,11 +1,11 @@
 ## Quick start
 ```shell
-    tandemmapper.py --reads test_data/test_query.fasta test_data/test_target.fasta -o test_outdir
+    tandemmapper2 --reads test_data/test_query.fasta test_data/test_target.fasta -o test_outdir -d hifi
 ```
 
 ## Introduction
 
-**TandemMapper2** is designed for mapping long reads (PacBio HiFi or ONT) to assemblies of extra-long tandem repeats, such as centromeres. The tool outputs SAM file that can be used in any downstream analysis. In addition, TandemMapper2 yields an information about possible errors and heterozygous sites in the assembly based on analysis of rare k-mers.
+**TandemMapper2** is designed for mapping long reads (PacBio HiFi or ONT) to assemblies of extra-long tandem repeats, such as centromeres, but can be applied to whole-genome assemblies. The tool outputs SAM file that can be used in any downstream analysis. In addition, TandemMapper2 yields an information about possible errors and heterozygous sites in the assembly based on analysis of rare k-mers.
 
 ## Installation
 
@@ -14,7 +14,7 @@ Requirements are listed in ```requirements.txt``` and can be installed through C
 ## Usage
 
 ```shell
-tandemmapper.py [options] --reads <reads_file> -d <hifi,ont> -o <output_dir> <assembly_file1> <assembly_file2>
+tandemmapper2 [options] --reads <reads_file> -d <hifi,ont> -o <output_dir> <assembly_file1> <assembly_file2>
 
 Required arguments:
     --reads         PATH                 File with Oxford Nanopore or PacBio HiFi reads used for ETR assembly
@@ -25,6 +25,12 @@ Optional arguments:
     -t             INT                  Maximum number of threads [default: 4]
     -l             \"label,label,...\"  Human-readable names of assemblies to use in reports, comma-separated. If contain spaces, use quotes
 ```
+In case TandemMapper2 is built locally, it should be run as follows:
+
+```shell
+python tandemmapper2/main.py [options] --reads <reads_file> -d <hifi,ont> -o <output_dir> <assembly_file1> <assembly_file2>
+```
+
 ## Output files
 
 The following files are contained in `<output_dir>` directory (specified by `-o`) and include results

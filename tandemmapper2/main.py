@@ -3,6 +3,9 @@ import os
 import sys
 from os.path import isdir, abspath
 
+root = os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir)
+sys.path.insert(0, root)
+
 import click as click
 
 from tandemmapper2.py_src.assembly import Assembly
