@@ -16,7 +16,7 @@ tandem_mapper: cmake
 	ls -lAh build/bin
 	mv $(abspath build/src/projects/tandem_mapper/tandem_mapper) build/bin/tandem_mapper
 	ls -lAh build/bin
-	mv $(abspath build/src/projects/tandem_mapper/config) build/bin
+	mv -f $(abspath build/src/projects/tandem_mapper/config) build/bin
 
 test_launch: tandem_mapper
 	build/bin/tandem_mapper \
