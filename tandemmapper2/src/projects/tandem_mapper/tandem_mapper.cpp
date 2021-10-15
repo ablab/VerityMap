@@ -80,9 +80,9 @@ int main(int argc, char ** argv) {
         std::string config = parser.getValue("config");
         std::filesystem::path dirpath = binary_path.parent_path();
         if (config == "hifi") {
-            return dirpath / "../../config/config_tm2_hifi.tsv";
+            return dirpath / "config/config_tm2_hifi.tsv";
         } else if (config == "ont") {
-            return dirpath / "../../config/config_tm2_ont.tsv";
+            return dirpath / "config/config_tm2_ont.tsv";
         }
         return static_cast<std::filesystem::path>(config);
     }();
