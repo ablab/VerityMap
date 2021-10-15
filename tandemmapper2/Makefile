@@ -12,7 +12,6 @@ tandem_mapper: cmake
 	ls -lAh build
 	$(MAKE) -C build all
 	ls -lAh build
-	ls -lAh build/bin
 	mkdir -p build/bin
 	ls -lAh build/bin
 	mv $(abspath build/src/projects/tandem_mapper/tandem_mapper) build/bin/tandem_mapper
