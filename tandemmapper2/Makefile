@@ -10,7 +10,9 @@ cmake:
 
 tandem_mapper: cmake
 	$(MAKE) -C build all
-	mkdir -p build/bin && mv $(abspath build/src/projects/tandem_mapper/tandem_mapper) build/bin/tandem_mapper
+	mkdir -p build/bin
+	mv $(abspath build/src/projects/tandem_mapper/tandem_mapper) build/bin/tandem_mapper
+	mv $(abspath build/src/projects/tandem_mapper/config) build/bin
 
 test_launch: tandem_mapper
 	build/bin/tandem_mapper \
