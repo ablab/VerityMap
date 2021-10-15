@@ -53,11 +53,6 @@ execute_process(COMMAND
 configure_file("${TOOLS_SRC_DIR}/version/version.cpp.in" ${TOOLS_SRC_DIR}/version/version.cpp @ONLY)
 set(VERSION ${TOOLS_SRC_DIR}/version/version.cpp)
 
-## generate config_dir_def
-#set(CONFIG_DIR_DEF ${CMAKE_CURRENT_SOURCE_DIR}/config)
-#configure_file("${TOOLS_SRC_DIR}/config_dir_def/config_dir_def.cpp.in" ${TOOLS_SRC_DIR}/config_dir_def/config_dir_def.cpp @ONLY)
-#set(CONFIG_DIR_DEF_CPP ${TOOLS_SRC_DIR}/config_dir_def/config_dir_def.cpp)
-
 include_directories(${TOOLS_SRC_DIR})
 # include_directories(${TESTS_SRC_DIR})
 include_directories(${PROJECT_SRC_DIR})
