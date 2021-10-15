@@ -12,7 +12,8 @@ source_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 MAPPER_BIN = join(source_dir, "build/bin/tandem_mapper")
 MIN_CHAIN_KMERS = 5
 MIN_CHAIN_LEN = 2000
-MAX_DIFF = 100
+MAX_DIFF_PB = 100
+MAX_DIFF_ONT = 1000
 
 
 def make_mapper():
@@ -46,7 +47,7 @@ def run_mapper(assembly, reads_fname, out_dir, threads, datatype, is_careful):
     print('Mapping finished!')
 
 
-def postprocess_chains(assembly):
+def postprocess_chains(assembly, datatype):
     read_alignments = defaultdict(list)
     read_lengths = dict()
     read_seeds = defaultdict(lambda: defaultdict(list))
@@ -64,6 +65,7 @@ def postprocess_chains(assembly):
                 read_seeds[read_name][(ref_name, ref_start, ref_end, align_start, align_end)].append((read_pos, ref_pos))
     num_alignments = 0
     all_errors = defaultdict(list)
+    max_diff = MAX_DIFF_ONT if datatype == 'ont' else MAX_DIFF_PB
     with open(assembly.bed_fname, "w") as f:
         for read_name, aligns in read_alignments.items():
             max_kmers = 0
@@ -85,7 +87,6 @@ def postprocess_chains(assembly):
                         ref_s, ref_e, aln_s, aln_e = seeds[i-1][1],seeds[i][1],seeds[i-1][0],seeds[i][0]
                         ref_diff = abs(ref_e - ref_s)
                         read_diff = abs(aln_e - aln_s)
-                        max_diff = MAX_DIFF
                         if abs(ref_diff-read_diff) >= max_diff:
                             breakpoints.append(i-1)
                             cur_errors.append((seeds[i-1][1], seeds[i][1], read_name, ref_diff-read_diff))
@@ -149,7 +150,7 @@ def do(assemblies, reads_fname, datatype, out_dir, threads, no_reuse, is_careful
         run_mapper(assembly, reads_fname, out_dir, threads, datatype, is_careful)
     all_data = []
     for assembly in assemblies:
-        errors = postprocess_chains(assembly)
+        errors = postprocess_chains(assembly, datatype)
         coverage = calculate_coverage(get_fasta_lenghts(assembly.fname), assembly.bed_fname)
         all_data.append((errors, coverage))
     make_plotly_html(assemblies, all_data, out_dir)
