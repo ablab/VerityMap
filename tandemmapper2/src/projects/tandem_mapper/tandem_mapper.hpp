@@ -48,21 +48,23 @@ namespace tandem_mapper {
     }
 
     std::optional<chaining::Chain>
-    _map_single(const kmer_index::IndexedContig & indexed_target, const Contig & query, const Config & config) {
+    _map_single(const Contig & query, const kmer_index::IndexedContigs & indexed_targets, const Config & config) {
         using score_type = typename Config::ChainingParams::score_type;
 
-        chaining::Chains chains_f =
-                _map_single_strand(indexed_target, query, dna_strand::Strand::forward, config);
-        chaining::Chains chains_r =
-                _map_single_strand(indexed_target, query, dna_strand::Strand::reverse, config);
-
         chaining::Chains chains;
-        for (size_t i = 0; i < 2; ++i) {
-            if (chains_f.size() > i) {
-                chains.emplace_back(std::move(chains_f[i]));
-            }
-            if (chains_r.size() > i) {
-                chains.emplace_back(std::move(chains_r[i]));
+        for (const kmer_index::IndexedContig & indexed_target : indexed_targets) {
+            chaining::Chains chains_f =
+                    _map_single_strand(indexed_target, query, dna_strand::Strand::forward, config);
+            chaining::Chains chains_r =
+                    _map_single_strand(indexed_target, query, dna_strand::Strand::reverse, config);
+
+            for (size_t i = 0; i < 2; ++i) {
+                if (chains_f.size() > i) {
+                    chains.emplace_back(std::move(chains_f[i]));
+                }
+                if (chains_r.size() > i) {
+                    chains.emplace_back(std::move(chains_r[i]));
+                }
             }
         }
         if (chains.empty())
@@ -105,12 +107,10 @@ namespace tandem_mapper {
         }
         sam_os << "@PG\tID:tandemMapper2\tPN:tandemMapper2\tVN:2.0\tCL:" << cmd << "\n";
 
-        std::function<void(const TargetQuery & target_query)> align_read =
-            [&hasher, &chainsMutex, &chains_os, &sam_os, &config] (const TargetQuery & target_query) {
+        std::function<void(const Contig & query)> align_read =
+            [&indexed_targets, &chainsMutex, &chains_os, &sam_os, &config] (const Contig & query) {
 
-                std::optional<chaining::Chain> chain =
-                        _map_single(*(std::get<0>(target_query)), *(std::get<1>(target_query)),
-                                    config);
+                std::optional<chaining::Chain> chain = _map_single(query, indexed_targets, config);
 
                 if (chain.has_value()) {
                     std::string sam_record = chaining::chain2samrecord(chain.value(),
@@ -123,14 +123,7 @@ namespace tandem_mapper {
                 }
             };
 
-        std::vector<TargetQuery> targets_queries;
-        for (const auto & target : indexed_targets) {
-            for (const auto & query : queries) {
-                targets_queries.emplace_back(&target, &query);
-            }
-        }
-
-        process_in_parallel(targets_queries, align_read, nthreads, true);
+        process_in_parallel(queries, align_read, nthreads, true);
 
         chains_os.close();
         sam_os.close();
