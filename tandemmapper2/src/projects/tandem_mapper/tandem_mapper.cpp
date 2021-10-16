@@ -11,7 +11,6 @@
 #include "version/version.hpp"
 #include "tandem_mapper.hpp"
 #include "config/config.hpp"
-#include "config_dir_def/config_dir_def.hpp"
 
 
 int main(int argc, char ** argv) {
