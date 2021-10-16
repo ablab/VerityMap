@@ -59,16 +59,16 @@ namespace tandem_mapper {
         chaining::Chains chains;
         for (size_t i = 0; i < 2; ++i) {
             if (chains_f.size() > i) {
-                chains.emplace_back(chains_f[i]);
+                chains.emplace_back(std::move(chains_f[i]));
             }
             if (chains_r.size() > i) {
-                chains.emplace_back(chains_r[i]);
+                chains.emplace_back(std::move(chains_r[i]));
             }
         }
         if (chains.empty())
             return std::nullopt;
         if (chains.size() == 1)
-            return chains.front();
+            return std::move(chains.front());
 
         auto pr_it = std::max_element(chains.begin(), chains.end(),
                                       [](const auto & lhs, const auto & rhs) { return lhs.score < rhs.score; });
@@ -81,7 +81,7 @@ namespace tandem_mapper {
         }
         const double top_score_prop = static_cast<double>(sc_score) / pr_it->score;
         if (top_score_prop < config.chaining_params.max_top_score_prop)
-            return *pr_it;
+            return std::move(*pr_it);
         return std::nullopt;
     }
 
@@ -92,7 +92,8 @@ namespace tandem_mapper {
                       const std::filesystem::path & chains_fn,
                       const std::filesystem::path & sam_fn,
                       const std::string & cmd,
-                      const Config & config) {
+                      const Config & config,
+                      logging::Logger & logger) {
         std::mutex chainsMutex;
         using TargetQuery = std::tuple<const kmer_index::IndexedContig *, const Contig *>;
 
@@ -194,7 +195,7 @@ namespace tandem_mapper {
         const auto sam_fn = outdir / "alignments.sam";
 
         logger.info() << "Computing chains and sam records..." << std::endl;
-        parallel_run(indexed_targets, queries, hasher, nthreads, chains_fn, sam_fn, cmd, config);
+        parallel_run(indexed_targets, queries, hasher, nthreads, chains_fn, sam_fn, cmd, config, logger);
 
         logger.info() << "Finished outputting chains to " << chains_fn << " and sam records to " << sam_fn << std::endl;
 
