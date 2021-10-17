@@ -24,6 +24,18 @@ namespace tandem_mapper::chaining {
         [[nodiscard]] Config::ChainingParams::match_pos_type query_en() const { return matches.back().query_pos; }
         [[nodiscard]] Config::ChainingParams::match_pos_type target_st() const { return matches.front().target_pos; }
         [[nodiscard]] Config::ChainingParams::match_pos_type target_en() const { return matches.back().target_pos; }
+
+        Chain(const Contig & target,
+              const Contig & query,
+              const dna_strand::Strand query_strand,
+              matches::Matches matches,
+              const Config::ChainingParams::score_type score) :
+              target{target}, query{query}, query_strand{query_strand}, matches{std::move(matches)}, score{score} { }
+
+        Chain(const Chain &) = delete;
+        Chain & operator=(Chain) = delete;
+        Chain(Chain &&) = default;
+        Chain & operator=(Chain&&) = delete;
     };
 
     std::ostream & operator<<(std::ostream & os, const Chain & chain) {
@@ -122,7 +134,7 @@ namespace tandem_mapper::chaining {
 
         Chains chains_vec;
         for (auto && scored_matches : scored_matches_vec) {
-            chains_vec.push_back({target, query, query_strand, scored_matches.first, scored_matches.second});
+            chains_vec.emplace_back(target, query, query_strand, scored_matches.first, scored_matches.second);
         }
 
         return chains_vec;
