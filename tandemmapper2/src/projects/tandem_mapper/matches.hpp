@@ -4,6 +4,7 @@
 
 # pragma once
 
+#include "kmer_index/filter_rep_kmers.hpp"
 #include "strand.hpp"
 #include "config/config.hpp"
 
@@ -46,25 +47,35 @@ namespace tandem_mapper::matches {
                         const Contig & query,
                         const dna_strand::Strand & query_strand,
                         const RollingHash<typename Config::HashParams::htype> & hasher,
-                        const size_t max_rare_cnt_query) {
-        kmer_index::KmerIndex query_kmer_index_all = query_strand == dna_strand::Strand::forward ?
-                kmer_index::get_rare_kmers(query.seq, hasher, max_rare_cnt_query) :
-                kmer_index::get_rare_kmers(query.RC().seq, hasher, max_rare_cnt_query);
+                        const Config::KmerIndexerParams & kmer_indexer_params) {
+        Sequence seq = query_strand == dna_strand::Strand::forward ? query.seq : query.RC().seq;
+        if (seq.size() < hasher.k) {
+            return {};
+        }
+
+        // We are using approximate kmer detection
+        const double fpp{kmer_indexer_params.approximate_kmer_indexer_params.false_positive_probability};
+        BloomFilter rep_kmer_bf = tandem_mapper::kmer_index::filter_rep_kmers::get_bloom_rep_kmers(seq, hasher, fpp);
+
         Matches matches;
-        for (auto && [hash, qpos] : query_kmer_index_all) {
-            if (target_kmer_index.contains(hash)) {
+        KWH<Config::HashParams::htype> kwh(hasher, seq, 0);
+        while (true) {
+            const Config::HashParams::htype hash = kwh.get_fhash();
+            if (not rep_kmer_bf.contains(hash) and target_kmer_index.contains(hash)) {
                 const size_t tf64 = target_kmer_index.at(hash).size();
                 VERIFY(tf64 <= std::numeric_limits<uint8_t>::max());
                 const auto target_freq = static_cast<uint8_t>(tf64);
                 for (const size_t tp : target_kmer_index.at(hash)) {
-                    for (const size_t qp : qpos) {
-                        VERIFY(qp < std::numeric_limits<int32_t>::max());
-                        matches.push_back({ static_cast<Config::ChainingParams::match_pos_type>(tp),
-                                            static_cast<int32_t>(qp),
-                                            target_freq });
-                    }
+                    VERIFY(kwh.pos < std::numeric_limits<int32_t>::max());
+                    matches.push_back({static_cast<Config::ChainingParams::match_pos_type>(tp),
+                                       static_cast<int32_t>(kwh.pos),
+                                       target_freq});
                 }
             }
+            if (not kwh.hasNext()) {
+                break;
+            }
+            kwh = kwh.next();
         }
         std::sort(matches.begin(), matches.end());
         return matches;
