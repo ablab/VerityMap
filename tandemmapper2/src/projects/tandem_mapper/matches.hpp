@@ -49,33 +49,11 @@ namespace tandem_mapper::matches {
                         const RollingHash<typename Config::HashParams::htype> & hasher,
                         const Config::KmerIndexerParams & kmer_indexer_params) {
         Sequence seq = query_strand == dna_strand::Strand::forward ? query.seq : query.RC().seq;
-        if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::exact) {
-            const int max_rare_cnt_query{1};
-            kmer_index::KmerIndex query_kmer_index_all = kmer_index::get_rare_kmers(seq, hasher, max_rare_cnt_query);
-            Matches matches;
-            for (auto &&[hash, qpos] : query_kmer_index_all) {
-                if (target_kmer_index.contains(hash)) {
-                    const size_t tf64 = target_kmer_index.at(hash).size();
-                    VERIFY(tf64 <= std::numeric_limits<uint8_t>::max());
-                    const auto target_freq = static_cast<uint8_t>(tf64);
-                    for (const size_t tp : target_kmer_index.at(hash)) {
-                        for (const size_t qp : qpos) {
-                            VERIFY(qp < std::numeric_limits<int32_t>::max());
-                            matches.push_back({static_cast<Config::ChainingParams::match_pos_type>(tp),
-                                               static_cast<int32_t>(qp),
-                                               target_freq});
-                        }
-                    }
-                }
-            }
-            std::sort(matches.begin(), matches.end());
-            return matches;
-        }
-
         if (seq.size() < hasher.k) {
             return {};
         }
-        VERIFY(kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate);
+
+        // We are using approximate kmer detection
         const double fpp{kmer_indexer_params.approximate_kmer_indexer_params.false_positive_probability};
         BloomFilter rep_kmer_bf = tandem_mapper::kmer_index::filter_rep_kmers::get_bloom_rep_kmers(seq, hasher, fpp);
 
