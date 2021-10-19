@@ -33,7 +33,7 @@ namespace tandem_mapper {
                                      query,
                                      query_strand,
                                      indexed_target.get_hasher(),
-                                     config.kmer_indexer_params.max_rare_cnt_query);
+                                     config.kmer_indexer_params);
         if (matches.size() < config.chaining_params.min_matches) {
             return {};
         }

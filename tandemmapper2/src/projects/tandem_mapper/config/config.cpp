@@ -26,7 +26,7 @@ Config Config::load_config_file(const std::filesystem::path & config_fn) {
          stoi(m.at("nhash"))};
     Config::KmerIndexerParams kmer_indexer_params {stoull(m.at("min_uncovered_len")),
                                                    stoull(m.at("max_rare_cnt_target")),
-                                                   stoull(m.at("max_rare_cnt_query")),
+                                                   // stoull(m.at("max_rare_cnt_query")),
                                                    stoull(m.at("k_step_size")),
                                                    stoull(m.at("k_window_size")),
                                                    stod(m.at("window_unique_density")),

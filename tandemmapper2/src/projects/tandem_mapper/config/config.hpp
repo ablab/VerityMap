@@ -27,7 +27,7 @@ namespace tandem_mapper {
             size_t min_uncovered_len;
 
             size_t max_rare_cnt_target;
-            size_t max_rare_cnt_query;
+            // size_t max_rare_cnt_query;
             // static_assert(max_rare_cnt_target <= std::numeric_limits<uint8_t>::max(),
             //               "Match stores frequency as uint8_t to economize memory usage");
             size_t k_step_size;
