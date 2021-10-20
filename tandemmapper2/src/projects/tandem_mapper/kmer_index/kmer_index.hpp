@@ -13,6 +13,7 @@
 namespace tandem_mapper::kmer_index {
 
     using KmerIndex = std::unordered_map<Config::HashParams::htype, std::vector<size_t>>;
+    using KmerIndexes = std::vector<KmerIndex>;
 
     using Counter = std::unordered_map<Config::HashParams::htype, size_t>;
 
@@ -75,14 +76,14 @@ namespace tandem_mapper::kmer_index {
         return hash2seqs;
     }
 
-    std::vector<KmerIndex> _get_rare_kmers_from_counter(const RollingHash<Config::HashParams::htype> & hasher,
-                                                        const std::vector<Sequence> & seqs,
-                                                        const std::unordered_map<
-                                                            Config::HashParams::htype,
-                                                            std::unordered_set<size_t>> & hash2seqs,
-                                                        const Counters & counters,
-                                                        const size_t max_rare_cnt) {
-        std::vector<KmerIndex> rare_kmers_indexes;
+    KmerIndexes _get_rare_kmers_from_counter(const RollingHash<Config::HashParams::htype> & hasher,
+                                             const std::vector<Sequence> & seqs,
+                                             const std::unordered_map<
+                                                 Config::HashParams::htype,
+                                                 std::unordered_set<size_t>> & hash2seqs,
+                                             const Counters & counters,
+                                             const size_t max_rare_cnt) {
+        KmerIndexes rare_kmers_indexes;
         for (auto it = seqs.cbegin(); it != seqs.cend(); ++it) {
             KmerIndex & rare_kmers_index { rare_kmers_indexes.emplace_back() };
             const Sequence & seq = *it;
@@ -108,23 +109,23 @@ namespace tandem_mapper::kmer_index {
         return rare_kmers_indexes;
     }
 
-    std::vector<KmerIndex> get_rare_kmers(const std::vector<Sequence> & sequences,
-                                                 const RollingHash<Config::HashParams::htype> & hasher,
-                                                 const size_t max_rare_cnt) {
+    KmerIndexes get_rare_kmers(const std::vector<Sequence> & sequences,
+                               const RollingHash<Config::HashParams::htype> & hasher,
+                               const size_t max_rare_cnt) {
         const Counters counters = _get_counters(hasher, sequences);
         const std::unordered_map<Config::HashParams::htype, std::unordered_set<size_t>> hash2seqs =
             _get_hash2seqs(counters);
-        std::vector<KmerIndex> rare_kmers_indexes = _get_rare_kmers_from_counter(hasher,
-                                                                                 sequences,
-                                                                                 hash2seqs,
-                                                                                 counters,
-                                                                                 max_rare_cnt);
+        KmerIndexes rare_kmers_indexes = _get_rare_kmers_from_counter(hasher,
+                                                                      sequences,
+                                                                      hash2seqs,
+                                                                      counters,
+                                                                      max_rare_cnt);
         return rare_kmers_indexes;
     }
 
-    std::vector<KmerIndex> get_rare_kmers(const std::vector<Contig> & contigs,
-                                          const RollingHash<Config::HashParams::htype> & hasher,
-                                          const size_t max_rare_cnt) {
+    KmerIndexes get_rare_kmers(const std::vector<Contig> & contigs,
+                               const RollingHash<Config::HashParams::htype> & hasher,
+                               const size_t max_rare_cnt) {
         std::vector<Sequence> seqs;
         for (const auto & contig : contigs) {
             seqs.emplace_back(contig.seq);
@@ -248,7 +249,7 @@ namespace tandem_mapper::kmer_index {
                                              const RollingHash<Config::HashParams::htype> & hasher,
                                              size_t max_rare_cnt) {
         IndexedContigs indexed_contigs;
-        std::vector<KmerIndex> rare_kmers_indexes = get_rare_kmers(contigs, hasher, max_rare_cnt);
+        KmerIndexes rare_kmers_indexes = get_rare_kmers(contigs, hasher, max_rare_cnt);
         for (auto it = rare_kmers_indexes.begin(); it != rare_kmers_indexes.end(); ++it) {
             const Contig & contig = contigs.at(it - rare_kmers_indexes.begin());
             indexed_contigs.emplace_back(contig, hasher, max_rare_cnt, std::move(*it));

@@ -11,6 +11,7 @@ strategy    approximate
 false_positive_probability  0.00001
 exp_base    1
 nhash   5
+careful_upper_bnd_cov_mult  1.5
 min_matches 20
 min_score   0
 max_top_score_prop  0.9

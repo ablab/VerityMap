@@ -52,6 +52,8 @@ namespace tandem_mapper {
                 int nhash;
             };
             ApproximateKmerIndexerParams approximate_kmer_indexer_params;
+
+            double careful_upper_bnd_cov_mult;
         };
         KmerIndexerParams kmer_indexer_params;
 

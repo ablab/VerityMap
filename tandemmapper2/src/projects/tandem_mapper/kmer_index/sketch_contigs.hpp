@@ -6,9 +6,12 @@
 #include <omp.h>
 #include <ctime>
 
-#include "../rolling_hash.hpp"
 #include "kmer_index.hpp"
+#include "kmer_type.hpp"
+#include "kmer_window.hpp"
+#include "../rolling_hash.hpp"
 #include "../config/config.hpp"
+#include "common/coverage_utils.hpp"
 
 namespace tandem_mapper::kmer_index::sketch_contigs {
 
@@ -61,6 +64,7 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
         [[nodiscard]] const sketch::ccm_t & get_cms() const { return cms; }
     };
 
+
     template <typename htype>
     class SketchContigs {
         const std::vector<Contig> & contigs;
@@ -70,6 +74,8 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
         size_t max_cnt {1};
         BloomFilter once_filter;
         BloomFilter ban_filter;
+        double careful_upper_bnd_cov_mult;
+
         static BloomParameters _get_filter_params(const std::vector<Contig> & contigs,
                                                   const size_t k, const double fpp) {
             size_t N {0};
@@ -83,56 +89,118 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
             return params;
         }
 
-    public:
-        SketchContigs(const std::vector<Contig> & contigs_,
-                      const RollingHash<htype> & hasher_,
-                      const size_t k_,
-                      const size_t max_cnt_,
-                      const double fpp,
-                      const double exp_base,
-                      const int nhash): contigs{contigs_}, hasher{hasher_}, k{k_}, max_cnt{max_cnt_},
-                                        once_filter{_get_filter_params(contigs_, k_, fpp)},
-                                        ban_filter {_get_filter_params(contigs_, k_, fpp)} {
-            for (const Contig & contig : contigs) {
-                sketch_contigs.emplace_back(contig, once_filter, ban_filter, hasher, k, max_cnt, exp_base, nhash);
+        void ban_high_freq_unique_kmers(const std::vector<Contig> & contigs_,
+                                        const std::vector<Contig> & readset,
+                                        const double exp_base,
+                                        const int nhash,
+                                        const uint32_t nthreads) {
+            // If read-set is not empty, we additionally ban unique k-mers in assembly that have unusually high coverage
+            if (readset.empty())
+                return;
+
+            uint64_t n_unique_kmers { get_n_unique_kmers() };
+
+            const double coverage { tools::common::coverage_utils::get_coverage(contigs_, readset) };
+
+            const uint max_read_freq = std::max(1., ceil(careful_upper_bnd_cov_mult * coverage));
+            const int nbits = std::max(1., ceil(log2(max_read_freq)));
+            const int l2sz = ceil(log2(
+                    std::exp(exp_base) * ((double) n_unique_kmers)
+            ));
+
+            sketch::cm::ccm_t cms {nbits, l2sz, nhash};
+
+            for (const Contig & contig : readset) {
+                if (contig.size() < hasher.k) {
+                    continue;
+                }
+                KWH<htype> kwh(hasher, contig.seq, 0);
+                while(true) {
+                    const htype fhash = kwh.get_fhash();
+                    const htype rhash = kwh.get_rhash();
+                    std::vector<std::pair<htype, htype>> hashes { { fhash, rhash }, { rhash, fhash } };
+                    for (const auto [x, y] : hashes) {
+                        kmer_type::KmerType kmer_type =
+                                tandem_mapper::kmer_index::kmer_type::get_kmer_type(x, y,
+                                                                                    sketch_contigs,
+                                                                                    ban_filter,
+                                                                                    max_cnt);
+                        if (kmer_type == kmer_type::KmerType::unique) {
+                            if (ban_filter.contains((x))) {
+                                continue;
+                            } else {
+                                cms.add(x);
+                                if (cms.est_count(x) == max_read_freq) {
+                                    ban_filter.insert(x);
+                                }
+                            }
+                        }
+                    }
+                    if (!kwh.hasNext()) {
+                        break;
+                    }
+                    kwh = kwh.next();
+                }
             }
         }
 
-        [[nodiscard]] std::vector<tandem_mapper::kmer_index::KmerIndex> get_kmer_indexes(const std::vector<Contig> & readset,
-                                                                                         const size_t nthreads,
-                                                                                         const size_t step_size,
-                                                                                         const size_t window_size,
-                                                                                         const double uniq_frac) const {
-            enum class KmerType { unique, rare, frequent, not_solid };
-            struct KmerWindow {
-                const size_t length {1};
-                size_t tot_uniq {0};
-                std::deque<KmerType> deque;
+    public:
+        SketchContigs(const std::vector<Contig> & contigs,
+                      const std::vector<Contig> & readset,
+                      const RollingHash<htype> & hasher,
+                      const size_t k,
+                      const size_t max_cnt,
+                      const double fpp,
+                      const double exp_base,
+                      const int nhash,
+                      const double careful_upper_bnd_cov_mult,
+                      const uint64_t nthreads): contigs{contigs}, hasher{hasher}, k{k}, max_cnt{max_cnt},
+                                                once_filter{_get_filter_params(contigs, k, fpp)},
+                                                ban_filter {_get_filter_params(contigs, k, fpp)},
+                                                careful_upper_bnd_cov_mult {careful_upper_bnd_cov_mult} {
+            for (const Contig & contig : contigs) {
+                sketch_contigs.emplace_back(contig, once_filter, ban_filter, hasher, k, max_cnt, exp_base, nhash);
+            }
+            ban_high_freq_unique_kmers(contigs, readset, exp_base, nhash, nthreads);
+        }
 
-                explicit KmerWindow(const size_t length_): length{length_}, deque{length_, KmerType::not_solid} {
-                    VERIFY(length >= 1);
+        uint64_t get_n_unique_kmers() {
+            using namespace tandem_mapper::kmer_index::kmer_type;
+            uint64_t n_unique_kmers { 0 };
+            for (auto [itcontig, itsc] = std::pair{contigs.cbegin(), sketch_contigs.cbegin()};
+                 itcontig != contigs.cend();
+                 ++itcontig, ++itsc) {
+                const Contig & contig = *itcontig;
+                const SketchContig<htype> & sketch_contig = *itsc;
+                if (contig.size() < hasher.k) {
+                    continue;
                 }
+                KWH<htype> kwh(hasher, contig.seq, 0);
+                while(true) {
+                    const htype fhash = kwh.get_fhash();
+                    const htype rhash = kwh.get_rhash();
 
-                [[nodiscard]] double get_uniq_frac() const {
-                    return static_cast<double>(tot_uniq) / length;
-                }
-
-                void popnpush(KmerType kmer_type) {
-                    KmerType kmer_type_front { deque.front() };
-                    deque.pop_front();
-                    if (kmer_type_front == KmerType::unique) {
-                        --tot_uniq;
-                    }
-                    deque.push_back(std::move(kmer_type));
+                    const KmerType kmer_type = get_kmer_type(fhash, rhash, sketch_contig, ban_filter, max_cnt);
                     if (kmer_type == KmerType::unique) {
-                        ++tot_uniq;
+                        ++n_unique_kmers;
                     }
-                }
-            };
 
-            std::vector<tandem_mapper::kmer_index::KmerIndex> kmer_indexes;
+                    if (!kwh.hasNext()) {
+                        break;
+                    }
+                    kwh = kwh.next();
+                }
+            }
+            return n_unique_kmers;
+        }
+
+        [[nodiscard]] tandem_mapper::kmer_index::KmerIndexes get_kmer_indexes(const std::vector<Contig> & readset,
+                                                                              const size_t nthreads,
+                                                                              const size_t step_size,
+                                                                              const size_t window_size,
+                                                                              const double uniq_frac) const {
+            tandem_mapper::kmer_index::KmerIndexes kmer_indexes;
             VERIFY(contigs.size() == sketch_contigs.size());
-            std::unordered_set<htype> uniq_kmers;
             for (auto [itcontig, itsc] = std::pair{contigs.cbegin(), sketch_contigs.cbegin()};
                      itcontig != contigs.cend();
                      ++itcontig, ++itsc) {
@@ -142,88 +210,30 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
                 if (contig.size() < hasher.k) {
                     continue;
                 }
-                KmerWindow kmer_window {window_size};
+                tandem_mapper::kmer_index::kmer_window::KmerWindow kmer_window {window_size};
                 KWH<htype> kwh(hasher, contig.seq, 0);
                 while(true) {
                     const htype fhash = kwh.get_fhash();
                     const htype rhash = kwh.get_rhash();
-                    const KmerType kmer_type = [&fhash, &rhash, &sketch_contig, this]() {
-                        if (ban_filter.contains(fhash)) {
-                            return KmerType::not_solid;
-                        }
-                        const size_t fcnt{sketch_contig.get_cms().est_count(fhash)};
-                        if (fcnt > max_cnt) {
-                            return KmerType::frequent;
-                        }
-                        return fcnt == 1 ? KmerType::unique : KmerType::rare;
-                    }();
+
+                    const kmer_type::KmerType kmer_type =
+                        tandem_mapper::kmer_index::kmer_type::get_kmer_type(fhash,
+                                                                            rhash,
+                                                                            sketch_contig,
+                                                                            ban_filter,
+                                                                            max_cnt);
                     kmer_window.popnpush(kmer_type);
-                    const bool is_solid = (kmer_type == KmerType::unique) or (kmer_type == KmerType::rare);
+                    const bool is_solid = (kmer_type == kmer_type::KmerType::unique) or
+                            (kmer_type == kmer_type::KmerType::rare);
 
                     if (is_solid and ((kmer_window.get_uniq_frac() < uniq_frac) or (kwh.pos % step_size == 0))) {
                         kmer_index[fhash].emplace_back(kwh.pos);
-                        if (kmer_type == KmerType::unique) {
-                            uniq_kmers.insert(fhash);
-                        }
                     }
 
                     if (!kwh.hasNext()) {
                         break;
                     }
                     kwh = kwh.next();
-                }
-
-                if (readset.size() == 0) continue;
-                std::vector<sketch::cm::ccm_t> cms_list;
-                std::vector<int> occ_list(nthreads, 0);
-
-                const size_t max_read_cnt = 50;
-                for (int i = 0; i <= nthreads; i++) {
-                    sketch::cm::ccm_t cms_tmp{static_cast<int>(ceil(log2(static_cast<double>(max_read_cnt)))),
-                                            static_cast<int>(ceil(log2(std::exp(1) *
-                                                                          static_cast<double>(uniq_kmers.size())))),
-                                            5};
-                    cms_list.emplace_back(cms_tmp);
-                }
-                omp_set_num_threads(nthreads);
-                #pragma omp parallel for
-                for (const Contig & contig : readset) {
-                    if (contig.size() < hasher.k) {
-                        continue;
-                    }
-                    const short ithread  = omp_get_thread_num();
-                    KWH<htype> kwh(hasher, contig.seq, 0);
-                    while(true) {
-                        const htype fhash = kwh.get_fhash();
-                        const htype rhash = kwh.get_rhash();
-                        if (uniq_kmers.contains(fhash)) {
-                            cms_list[ithread].add(fhash);
-                            occ_list[ithread]++;
-                        }
-                        else if (uniq_kmers.contains(rhash)) {
-                            cms_list[ithread].add(rhash);
-                            occ_list[ithread]++;
-                        }
-                        if (!kwh.hasNext()) {
-                            break;
-                        }
-                        kwh = kwh.next();
-                    }
-                };
-                int total_occ = accumulate(occ_list.begin(), occ_list.end(), 0);
-                double thresh_read_cnt = total_occ/uniq_kmers.size()*1.5;
-                sketch::cm::ccm_t cmsq(static_cast<int>(ceil(log2(static_cast<double>(max_read_cnt)))),
-                                   static_cast<int>(ceil(log2(std::exp(1) *
-                                              static_cast<double>(uniq_kmers.size())))),5);
-                for (const sketch::cm::ccm_t cms_tmp : cms_list) {
-                    cmsq += cms_tmp;
-                }
-
-                for (const htype hash : uniq_kmers) {
-                    size_t rcnt = {cmsq.est_count(hash)};
-                    if (rcnt >= thresh_read_cnt) {
-                        kmer_index.erase(hash);
-                    }
                 }
             }
             return kmer_indexes;
@@ -232,20 +242,27 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
 
     template <typename htype>
     std::vector<KmerIndex> get_rare_kmers_approx(const std::vector<Contig> & contigs,
-                                                        const std::vector<Contig> & readset,
-                                                        const size_t nthreads,
-                                                        const RollingHash<htype> & hasher,
-                                                        const Config::CommonParams & common_params,
-                                                        const Config::KmerIndexerParams & kmer_indexer_params) {
+                                                 const std::vector<Contig> & readset,
+                                                 const size_t nthreads,
+                                                 const RollingHash<htype> & hasher,
+                                                 const Config::CommonParams & common_params,
+                                                 const Config::KmerIndexerParams & kmer_indexer_params) {
         const Config::KmerIndexerParams::ApproximateKmerIndexerParams & approximate_kmer_indexer_params =
                 kmer_indexer_params.approximate_kmer_indexer_params;
-        SketchContigs<htype> sketch_contigs{contigs, hasher, common_params.k, kmer_indexer_params.max_rare_cnt_target,
+        SketchContigs<htype> sketch_contigs{contigs, readset, hasher,
+                                            common_params.k,
+                                            kmer_indexer_params.max_rare_cnt_target,
                                             approximate_kmer_indexer_params.false_positive_probability,
                                             approximate_kmer_indexer_params.exp_base,
-                                            approximate_kmer_indexer_params.nhash};
-        return sketch_contigs.get_kmer_indexes(readset, nthreads, kmer_indexer_params.k_step_size,
-                                               kmer_indexer_params.k_window_size,
-                                               kmer_indexer_params.window_unique_density);
+                                            approximate_kmer_indexer_params.nhash,
+                                            kmer_indexer_params.careful_upper_bnd_cov_mult,
+                                            nthreads};
+        std::vector<tandem_mapper::kmer_index::KmerIndex> kmer_indexes =
+                sketch_contigs.get_kmer_indexes(readset, nthreads, kmer_indexer_params.k_step_size,
+                                                kmer_indexer_params.k_window_size,
+                                                kmer_indexer_params.window_unique_density);
+
+        return kmer_indexes;
     }
 
 } // End namespace tandem_mapper::kmer_index::sketch_contigs

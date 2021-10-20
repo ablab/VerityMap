@@ -31,7 +31,8 @@ Config Config::load_config_file(const std::filesystem::path & config_fn) {
                                                    stoull(m.at("k_window_size")),
                                                    stod(m.at("window_unique_density")),
                                                    Config::KmerIndexerParams::str2strategy(m.at("strategy")),
-                                                   aprx_kmer_indexer_params };
+                                                   aprx_kmer_indexer_params,
+                                                   stod(m.at("careful_upper_bnd_cov_mult"))};
     Config::Chain2SAMParams::KSW2Params ksw_2_params {static_cast<int8_t>(stoi(m.at("match_score"))),
                                                       static_cast<int8_t>(stoi(m.at("mis_score"))),
                                                       static_cast<int8_t>(stoi(m.at("gapo"))),
