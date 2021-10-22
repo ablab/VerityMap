@@ -19,13 +19,13 @@ namespace tandem_mapper::kmer_index::kmer_type {
     KmerType get_kmer_type(
             const htype fhash,
             const htype rhash,
-            const tandem_mapper::kmer_index::sketch_contigs::SketchContig<htype> & sketch_contig,
+            const sketch::cm::ccm_t & cms,
             const BloomFilter & ban_filter,
             const size_t min_freq_cnt) {
         if (ban_filter.contains(fhash)) {
             return KmerType::banned;
         }
-        const size_t fcnt{sketch_contig.get_cms().est_count(fhash)};
+        const size_t fcnt{cms.est_count(fhash)};
         if (fcnt > min_freq_cnt) {
             return KmerType::frequent;
         }

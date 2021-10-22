@@ -50,6 +50,7 @@ namespace tandem_mapper {
                 double false_positive_probability;
                 double exp_base;
                 int nhash;
+                size_t chunk_size;
             };
             ApproximateKmerIndexerParams approximate_kmer_indexer_params;
 
