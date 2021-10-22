@@ -15,13 +15,13 @@ min_matches 20
 min_score   0
 max_top_score_prop  0.9
 max_jump    100000
-misassembly_penalty_base    1000
+misassembly_penalty_base    100
 diff_penalty_mult   1
 min_chain_range 5000
 max_supp_dist_diff  5
 min_uniq_kmers  0
 match_score_unique  1
-match_score_rare    0.01
+match_score_rare    0.05
 match_score 1
 mis_score   -2
 gapo    2
