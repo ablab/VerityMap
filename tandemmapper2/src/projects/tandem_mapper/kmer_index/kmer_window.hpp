@@ -7,27 +7,33 @@
 
 namespace tandem_mapper::kmer_index::kmer_window {
     struct KmerWindow {
-        size_t tot_uniq {0};
-        std::deque<kmer_type::KmerType> deque;
+        std::size_t length {0};
+        int64_t tot_uniq;
+        std::deque<std::pair<size_t, bool>> deque;
 
-        explicit KmerWindow(const size_t length, const size_t nthreads):
-                deque{length / nthreads, kmer_type::KmerType::banned} {
+        explicit KmerWindow(const size_t length):
+                length{length},
+                tot_uniq{0} {
             VERIFY(length >= 1);
-            VERIFY(nthreads >= 1);
         }
 
-        [[nodiscard]] double get_uniq_frac() const {
-            return static_cast<double>(tot_uniq) / deque.size();
+        [[nodiscard]] double unique_frac() const {
+            return tot_uniq / double(length);
         }
 
-        void popnpush(kmer_type::KmerType kmer_type) {
-            kmer_type::KmerType kmer_type_front { deque.front() };
-            deque.pop_front();
-            if (kmer_type_front == kmer_type::KmerType::unique) {
-                --tot_uniq;
+        void add(size_t pos, bool is_unique) {
+            while (not deque.empty()) {
+                const auto[pos_front, is_unique_front]{deque.front()};
+                if (pos - pos_front < length) {
+                    break;
+                }
+                deque.pop_front();
+                if (is_unique_front) {
+                    --tot_uniq;
+                }
             }
-            deque.push_back(kmer_type);
-            if (kmer_type == kmer_type::KmerType::unique) {
+            deque.emplace_back(pos, is_unique);
+            if (is_unique) {
                 ++tot_uniq;
             }
         }
