@@ -47,11 +47,11 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
             std::vector<std::vector<std::pair<htype, htype>>> hashes(nthreads);
             std::vector<size_t> sizes(nthreads, 0);
 
-            auto process_chunk = [&ban_filter, &once_filter, &sizes, &hashes, this](size_t i) {
+            auto process_chunk = [&ban_filter, &once_filter, &sizes, &hashes, this](const size_t i) {
                 BloomFilter & ban_f = ban_filter[i];
                 BloomFilter & once_f = once_filter[i];
                 sketch::cm::ccm_t & sketch = cms[i];
-                std::vector<std::pair<htype, htype>> & hashes_th = hashes[i];
+                const std::vector<std::pair<htype, htype>> & hashes_th = hashes[i];
                 const size_t size = sizes[i];
                 for (int j = 0; j < size; ++j) {
                     const auto [fhash, rhash] = hashes_th[j];
@@ -75,7 +75,7 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
                 for (size_t cnt = 0; cnt < chunk_size; ++cnt) {
                     const htype fhash = kwh.get_fhash();
                     const htype rhash = kwh.get_rhash();
-                    const size_t ithread = fhash % nthreads;
+                    const size_t ithread = (fhash * rhash) % nthreads;
                     if (hashes[ithread].size() == sizes[ithread]) {
                         hashes[ithread].emplace_back(fhash, rhash);
                     } else {
@@ -206,45 +206,33 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
 
                 struct HashPosSolid {
                     htype fhash {0};
-                    htype rhash {0};
                     size_t pos {0};
                     bool is_solid = false;
                     bool is_unique = false;
                 };
                 std::vector<std::vector<HashPosSolid>> hashes_pos(nthreads);
                 std::vector<size_t> sizes(nthreads, 0);
-                std::atomic<int64_t> tot_uniq {0};
-                // std::vector<KmerWindow> kmer_windows(nthreads, KmerWindow(window_size, tot_uniq));
 
                 auto process_chunk = [this,
                                       &cms,
                                       &sizes,
                                       &hashes_pos,
-                                      // &kmer_windows,
-                                      // &kmer_indexes,
                                       &nthreads,
                                       &uniq_frac,
-                                      &step_size,
-                                      &tot_uniq](size_t i) {
+                                      &step_size](size_t i) {
                     const BloomFilter & ban_f = ban_filter[i];
                     const BloomFilter & once_f = once_filter[i];
                     const sketch::cm::ccm_t & sketch = cms[i];
                     std::vector<HashPosSolid> & hashes_pos_th = hashes_pos[i];
-                    // KmerWindow & kmer_window = kmer_windows[i];
-                    // KmerIndex & kmer_index = kmer_indexes[i];
                     const size_t size = sizes[i];
                     for (int j = 0; j < size; ++j) {
                         const htype fhash = hashes_pos_th[j].fhash;
-                        const htype rhash = hashes_pos_th[j].rhash;
                         const size_t pos = hashes_pos_th[j].pos;
-                        const size_t ithread = fhash % nthreads;
                         const kmer_type::KmerType kmer_type =
                                 tandem_mapper::kmer_index::kmer_type::get_kmer_type(fhash,
-                                                                                    rhash,
-                                                                                    cms[ithread],
-                                                                                    ban_filter[ithread],
+                                                                                    sketch,
+                                                                                    ban_f,
                                                                                     max_cnt);
-                        // kmer_window.popnpush(kmer_type);
                         hashes_pos_th[j].is_solid = (kmer_type == kmer_type::KmerType::unique) or
                                                     (kmer_type == kmer_type::KmerType::rare);
 
@@ -260,11 +248,11 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
                     for (size_t cnt = 0; cnt < chunk_size; ++cnt) {
                         const htype fhash = kwh.get_fhash();
                         const htype rhash = kwh.get_rhash();
-                        const size_t ithread = fhash % nthreads;
+                        const size_t ithread = (fhash * rhash) % nthreads;
                         if (hashes_pos[ithread].size() == sizes[ithread]) {
-                            hashes_pos[ithread].push_back({fhash, rhash, kwh.pos});
+                            hashes_pos[ithread].push_back({fhash, kwh.pos});
                         } else {
-                            hashes_pos[ithread][sizes[ithread]] = {fhash, rhash, kwh.pos};
+                            hashes_pos[ithread][sizes[ithread]] = {fhash, kwh.pos};
                         }
                         ++sizes[ithread];
                         if (not kwh.hasNext()) {
@@ -278,10 +266,6 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
                     }
                     for (auto & thread : threads) {
                         thread.join();
-                    }
-
-                    if (not kwh.hasNext()) {
-                        break;
                     }
 
                     std::vector<std::tuple<size_t, htype, bool>> pos_hash_uniq;
@@ -302,6 +286,10 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
                     }
 
                     std::fill(sizes.begin(), sizes.end(), 0);
+
+                    if (not kwh.hasNext()) {
+                        break;
+                    }
                 }
                 kmer_indexes.emplace_back(std::move(kmer_index));
             }

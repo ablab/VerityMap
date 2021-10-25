@@ -18,7 +18,6 @@ namespace tandem_mapper::kmer_index::kmer_type {
     template<typename htype>
     KmerType get_kmer_type(
             const htype fhash,
-            const htype rhash,
             const sketch::cm::ccm_t & cms,
             const BloomFilter & ban_filter,
             const size_t min_freq_cnt) {
@@ -35,7 +34,6 @@ namespace tandem_mapper::kmer_index::kmer_type {
     template<typename htype>
     KmerType get_kmer_type(
             const htype fhash,
-            const htype rhash,
             const std::vector<tandem_mapper::kmer_index::sketch_contigs::SketchContig<htype>> & sketch_contigs,
             const BloomFilter & ban_filter,
             const size_t min_freq_cnt) {
