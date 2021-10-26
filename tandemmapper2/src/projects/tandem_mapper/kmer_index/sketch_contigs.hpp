@@ -204,13 +204,13 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
                     continue;
                 }
 
-                struct HashPosSolid {
+                struct HashPosSolidUnique {
                     htype fhash {0};
                     size_t pos {0};
                     bool is_solid = false;
                     bool is_unique = false;
                 };
-                std::vector<std::vector<HashPosSolid>> hashes_pos(nthreads);
+                std::vector<std::vector<HashPosSolidUnique>> hashes_pos(nthreads);
                 std::vector<size_t> sizes(nthreads, 0);
 
                 auto process_chunk = [this,
@@ -223,7 +223,7 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
                     const BloomFilter & ban_f = ban_filter[i];
                     const BloomFilter & once_f = once_filter[i];
                     const sketch::cm::ccm_t & sketch = cms[i];
-                    std::vector<HashPosSolid> & hashes_pos_th = hashes_pos[i];
+                    std::vector<HashPosSolidUnique> & hashes_pos_th = hashes_pos[i];
                     const size_t size = sizes[i];
                     for (int j = 0; j < size; ++j) {
                         const htype fhash = hashes_pos_th[j].fhash;
@@ -244,6 +244,7 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
 
                 KmerIndex kmer_index;
                 KWH<htype> kwh({hasher, contig.seq, 0});
+                KmerWindow kmer_window(window_size);
                 while (true) {
                     for (size_t cnt = 0; cnt < chunk_size; ++cnt) {
                         const htype fhash = kwh.get_fhash();
@@ -269,15 +270,17 @@ namespace tandem_mapper::kmer_index::sketch_contigs {
                     }
 
                     std::vector<std::tuple<size_t, htype, bool>> pos_hash_uniq;
-                    for (const auto & hashes_pos_th : hashes_pos) {
-                        for (const HashPosSolid & hash_pos : hashes_pos_th) {
+                    for (size_t ithread = 0; ithread < nthreads; ++ithread) {
+                        const auto & hashes_pos_th = hashes_pos[ithread];
+                        for (size_t j = 0; j < sizes[ithread]; ++j) {
+                            const auto & hash_pos = hashes_pos_th[j];
                             if (hash_pos.is_solid) {
                                 pos_hash_uniq.emplace_back(hash_pos.pos, hash_pos.fhash, hash_pos.is_unique);
                             }
                         }
                     }
+
                     std::sort(pos_hash_uniq.begin(), pos_hash_uniq.end());
-                    KmerWindow kmer_window(window_size);
                     for (const auto & [pos, hash, is_unique] : pos_hash_uniq) {
                         kmer_window.add(pos, is_unique);
                         if ((kmer_window.unique_frac() < uniq_frac) or (pos % window_size == 0)) {
