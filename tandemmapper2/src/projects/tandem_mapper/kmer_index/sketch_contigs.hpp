@@ -16,6 +16,11 @@
 
 namespace tandem_mapper::kmer_index::sketch_contigs {
 
+size_t hash_combine(size_t lhs, size_t rhs) {
+  lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+  return lhs;
+}
+
 template<typename htype>
 class ApproxKmerIndexer {
   size_t nthreads{0};
@@ -47,8 +52,8 @@ class ApproxKmerIndexer {
     for (size_t cnt = 0; cnt < chunk_size; ++cnt) {
       const htype fhash = kwh.get_fhash();
       const htype rhash = kwh.get_rhash();
-      // TODO currently only half of threads is being used
-      const size_t ithread = (fhash * rhash) % nthreads;
+      const size_t ithread = ((fhash * rhash) % (2 * nthreads)) / 2;
+
       if (hashes_pos[ithread].size() == sizes[ithread]) {
         hashes_pos[ithread].push_back({fhash, kwh.pos});
       } else {

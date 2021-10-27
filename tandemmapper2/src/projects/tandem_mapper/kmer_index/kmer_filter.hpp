@@ -127,7 +127,7 @@ class KmerFilterBuilder {
       for (size_t cnt = 0; cnt < chunk_size; ++cnt) {
         const htype fhash = kwh.get_fhash();
         const htype rhash = kwh.get_rhash();
-        const size_t ithread = (fhash * rhash) % nthreads;
+        const size_t ithread = ((fhash * rhash) % (2 * nthreads)) / 2;
         if (hashes[ithread].size() == sizes[ithread]) {
           hashes[ithread].emplace_back(fhash, rhash);
         } else {
