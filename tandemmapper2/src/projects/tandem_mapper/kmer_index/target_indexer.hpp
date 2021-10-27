@@ -51,15 +51,14 @@ namespace tandem_mapper::kmer_index {
                 logger.info() << "Finished getting exact kmer indexes" << std::endl;
                 return kmers_indexes;
             } else {
-                VERIFY(kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate)
-                logger.info() << "Getting approximate kmer indexes..." << std::endl;
+            VERIFY(kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate)
+            logger.info() << "Getting approximate kmer indexes..." << std::endl;
 
-                std::vector<KmerIndex> kmers_indexes =
-                        sketch_contigs::get_rare_kmers_approx<htype>(
-                                targets, queries, nthreads, hasher, common_params, kmer_indexer_params);
-                logger.info() << "Finished getting approximate kmer indexes" << std::endl;
-                return kmers_indexes;
-            }
+            const sketch_contigs::ApproxKmerIndexer kmer_indexer(nthreads, hasher, common_params, kmer_indexer_params);
+            KmerIndexes kmers_indexes = kmer_indexer.extract(targets, queries);
+            logger.info() << "Finished getting approximate kmer indexes" << std::endl;
+            return kmers_indexes;
+          }
         }();
 
         IndexedContigs indexed_targets;
