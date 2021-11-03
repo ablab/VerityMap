@@ -51,7 +51,8 @@ In the BED file, VerityMap outputs approximate coordinates, length, and frequenc
 ## Citation
 
 Currently, you can refer to the first TandemTools paper:
-Alla Mikheenko, Andrey V. Bzikadze, Alexey Gurevich, Karen H. Miga, and Pavel A. Pevzner. TandemMapper and TandemQUAST: mapping long reads and assessing/improving assembly quality in extra-long tandem repeats, 2019, bioRxiv
+Alla Mikheenko, Andrey V Bzikadze, Alexey Gurevich, Karen H Miga, Pavel A Pevzner, TandemTools: mapping long reads and assessing/improving assembly quality in extra-long tandem repeats, Bioinformatics, Volume 36, Issue Supplement_1, July 2020, Pages i75–i83, https://doi.org/10.1093/bioinformatics/btaa440
+
 The paper describing VerityMap algorithm is in preparation.
 
 ## Contacts
