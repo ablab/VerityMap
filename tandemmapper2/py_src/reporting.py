@@ -54,13 +54,10 @@ def make_plotly_html(assemblies, all_data, out_dir):
                 diff_arr = [d[1] for d in data['diff'][i]]
                 mean_diff = np.median(diff_arr) if diff_arr else 0
                 stddev = np.std(diff_arr) if diff_arr else 0
-                if stddev > 200:
-                    stddev = min(stddev, 500)
-                    filt_reads = [d[0] for d in data['diff'][i] if abs(d[1]-mean_diff) <= min(abs(mean_diff)/5, 3*stddev)]
-                    filt_diff = [d[1] for d in data['diff'][i] if abs(d[1]-mean_diff) <= min(abs(mean_diff)/5, 3*stddev)]
-                else:
-                    filt_diff = diff_arr
-                    filt_reads = [d[0] for d in data['diff'][i]]
+                #if stddev > 200:
+                stddev = min(stddev, 50)
+                filt_reads = [d[0] for d in data['diff'][i] if abs(d[1]-mean_diff) <= min(abs(mean_diff)/5, stddev)]
+                filt_diff = [d[1] for d in data['diff'][i] if abs(d[1]-mean_diff) <= min(abs(mean_diff)/5, stddev)]
                 reads[i] = filt_reads
                 mean_diff2 = np.mean(filt_diff) if filt_diff else 0
                 stddev2 = np.std(filt_diff) if filt_diff else 0
