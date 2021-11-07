@@ -69,15 +69,13 @@ class ApproxKmerIndexer {
       thread.join();
     }
 
-    for (int i = 0; i < nthreads; ++i) {
-      std::cout << i << " " << sizes[i] << "\n";
-    }
     return sizes;
   }
 
   [[nodiscard]] KmerIndex GetKmerIndex(const Contig &contig,
                                        const kmer_filter::KmerFilter &kmer_filter,
-                                       const size_t ctg_ind = 0) const {
+                                       const size_t ctg_ind,
+                                       logging::Logger &logger) const {
     if (contig.size() < hasher.k) {
       return {};
     }
@@ -89,9 +87,11 @@ class ApproxKmerIndexer {
     const size_t window_size = kmer_indexer_params.k_window_size;
     kmer_window::KmerWindow kmer_window(window_size);
     while (true) {
+      logger.info() << "Pos = " << kwh.pos << "\n";
+      logger.info() << "Running jobs for chunk \n";
       std::vector<size_t> sizes = BinHashesInChunk(hashes_pos, kmer_filter, kwh, ctg_ind);
-      std::cout << kwh.pos << "\n";
 
+      logger.info() << "Preparing kmer positions for sort \n";
       std::vector<std::tuple<size_t, htype, bool>> pos_hash_uniq;
       for (size_t ithread = 0; ithread < nthreads; ++ithread) {
         const auto &hashes_pos_th = hashes_pos[ithread];
@@ -104,8 +104,10 @@ class ApproxKmerIndexer {
         }
       }
 
+      logger.info() << "Sorting kmer positions \n";
       std::sort(pos_hash_uniq.begin(), pos_hash_uniq.end());
 
+      logger.info() << "Extending kmer index \n";
       for (const auto &[pos, hash, is_unique] : pos_hash_uniq) {
         kmer_window.add(pos, is_unique);
         if ((kmer_window.unique_frac() < kmer_indexer_params.window_unique_density) or (pos % window_size == 0)) {
@@ -113,6 +115,7 @@ class ApproxKmerIndexer {
         }
       }
 
+      logger.info() << "Finished working with the chunk \n";
       if (not kwh.hasNext()) {
         break;
       }
@@ -121,11 +124,13 @@ class ApproxKmerIndexer {
   }
 
   [[nodiscard]] KmerIndexes GetKmerIndexes(const std::vector<Contig> &contigs,
-                                           const kmer_filter::KmerFilter &kmer_filter) const {
+                                           const kmer_filter::KmerFilter &kmer_filter,
+                                           logging::Logger &logger) const {
     KmerIndexes kmer_indexes;
     for (auto it = contigs.cbegin(); it != contigs.cend(); ++it) {
       const Contig &contig{*it};
-      kmer_indexes.emplace_back(GetKmerIndex(contig, kmer_filter, it - contigs.cbegin()));
+      logger.info() << "Creating index for contig " << contig.id << "\n";
+      kmer_indexes.emplace_back(GetKmerIndex(contig, kmer_filter, it - contigs.cbegin(), logger));
     }
     return kmer_indexes;
   }
@@ -148,10 +153,14 @@ class ApproxKmerIndexer {
   // TODO add careful mode
   // TODO change readset to optional
   [[nodiscard]] KmerIndexes extract(const std::vector<Contig> &contigs,
-                                    const std::vector<Contig> &readset) const {
+                                    const std::vector<Contig> &readset,
+                                    logging::Logger &logger) const {
     const kmer_filter::KmerFilterBuilder kmer_filter_builder{nthreads, hasher, common_params, kmer_indexer_params};
-    const kmer_filter::KmerFilter kmer_filter = kmer_filter_builder.GetKmerFilter(contigs);
-    return GetKmerIndexes(contigs, kmer_filter);
+    logger.info() << "Creating kmer filter\n";
+    const kmer_filter::KmerFilter kmer_filter = kmer_filter_builder.GetKmerFilter(contigs, logger);
+    logger.info() << "Finished creating kmer filter. Using it to build kmer indexes\n";
+    KmerIndexes kmer_indexes = GetKmerIndexes(contigs, kmer_filter, logger);
+    return kmer_indexes;
   }
 };
 

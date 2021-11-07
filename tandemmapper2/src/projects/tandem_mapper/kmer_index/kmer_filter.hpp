@@ -84,7 +84,8 @@ class KmerFilterBuilder {
   }
 
   void AddContigToFilter(KmerFilter &kmer_filter,
-                         const Contig &contig) const {
+                         const Contig &contig,
+                         logging::Logger &logger) const {
     const cms_utils::CMSParams kCmsParams(common_params, kmer_indexer_params, contig.size(), nthreads);
     std::vector<sketch::cm::ccm_t> cms;
     for (size_t i = 0; i < nthreads; ++i) {
@@ -124,6 +125,7 @@ class KmerFilterBuilder {
 
     KWH<htype> kwh({hasher, contig.seq, 0});
     while (true) {
+      logger.info() << "Generating task list for chunk starting at pos " << kwh.pos << "\n";
       for (size_t cnt = 0; cnt < chunk_size; ++cnt) {
         const htype fhash = kwh.get_fhash();
         const htype rhash = kwh.get_rhash();
@@ -139,6 +141,7 @@ class KmerFilterBuilder {
         }
         kwh = kwh.next();
       }
+      logger.info() << "Parallel run for chunk\n";
       std::vector<std::thread> threads(nthreads);
       for (size_t i = 0; i < threads.size(); ++i) {
         threads[i] = std::thread(process_chunk, i);
@@ -169,10 +172,13 @@ class KmerFilterBuilder {
   KmerFilterBuilder &operator=(const KmerFilterBuilder &) = delete;
   KmerFilterBuilder &operator=(KmerFilterBuilder &&) = delete;
 
-  [[nodiscard]] KmerFilter GetKmerFilter(const std::vector<Contig> &contigs) const {
+  [[nodiscard]] KmerFilter GetKmerFilter(const std::vector<Contig> &contigs, logging::Logger &logger) const {
+    logger.info() << "Init filter\n";
     KmerFilter kmer_filter = InitKmerFilter(contigs);
+    logger.info() << "Start adding contigs to filter\n";
     for (const Contig &contig : contigs) {
-      AddContigToFilter(kmer_filter, contig);
+      logger.info() << "Add contig " << contig.id << "\n";
+      AddContigToFilter(kmer_filter, contig, logger);
     }
     return kmer_filter;
   }

@@ -55,7 +55,7 @@ namespace tandem_mapper::kmer_index {
             logger.info() << "Getting approximate kmer indexes..." << std::endl;
 
             const sketch_contigs::ApproxKmerIndexer kmer_indexer(nthreads, hasher, common_params, kmer_indexer_params);
-            KmerIndexes kmers_indexes = kmer_indexer.extract(targets, queries);
+            KmerIndexes kmers_indexes = kmer_indexer.extract(targets, queries, logger);
             logger.info() << "Finished getting approximate kmer indexes" << std::endl;
             return kmers_indexes;
           }
