@@ -5,10 +5,11 @@
 #pragma once
 
 #include <vector>
+
 #include "sequences/contigs.hpp"
 
 namespace tools::common::coverage_utils {
 
-    double get_coverage(const std::vector<Contig> & contigs, const std::vector<Contig> & readset);
+double get_coverage(const std::vector<Contig>& contigs, const std::vector<Contig>& readset);
 
-} // End namespace tools::common::coverage_utils
+}// End namespace tools::common::coverage_utils
