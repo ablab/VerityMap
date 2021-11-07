@@ -5,6 +5,8 @@
 #pragma once
 
 #include "../cms_utils.hpp"
+#include "bloom.hpp"
+#include "sketch/ccm.h"
 
 namespace tandem_mapper::kmer_index::kmer_filter {
 

@@ -7,22 +7,22 @@
 #include <sequences/contigs.hpp>
 #include <sequences/seqio.hpp>
 
-#include "include/sketch/ccm.h"
-#include "bloom/bloom.hpp"
-#include "sketch_contigs.hpp"
-#include "../rolling_hash.hpp"
 #include "../config/config.hpp"
+#include "../rolling_hash.hpp"
+#include "approx_kmer_indexer.hpp"
+#include "bloom/bloom.hpp"
+#include "include/sketch/ccm.h"
 
 namespace tandem_mapper::kmer_index {
 
-    using Counter = std::unordered_map<Config::HashParams::htype, size_t>;
+using Counter = std::unordered_map<Config::HashParams::htype, size_t>;
 
-    kmer_index::IndexedContigs
-    get_indexed_targets(const std::vector<Contig> & queries,
-                        const std::vector<Contig> & targets,
-                        const std::filesystem::path & outdir,
-                        const RollingHash<Config::HashParams::htype> & hasher,
-                        const size_t nthreads,
+kmer_index::IndexedContigs
+get_indexed_targets(const std::vector<Contig>& queries,
+                    const std::vector<Contig>& targets,
+                    const std::filesystem::path& outdir,
+                    const RollingHash<Config::HashParams::htype>& hasher,
+                    const size_t nthreads,
                         logging::Logger & logger,
                         const std::filesystem::path & index_path,
                         const Config::CommonParams & common_params,
@@ -54,7 +54,7 @@ namespace tandem_mapper::kmer_index {
             VERIFY(kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate)
             logger.info() << "Getting approximate kmer indexes..." << std::endl;
 
-            const sketch_contigs::ApproxKmerIndexer kmer_indexer(nthreads, hasher, common_params, kmer_indexer_params);
+            const approx_kmer_indexer::ApproxKmerIndexer kmer_indexer(nthreads, hasher, common_params, kmer_indexer_params);
             KmerIndexes kmers_indexes = kmer_indexer.extract(targets, queries, logger);
             logger.info() << "Finished getting approximate kmer indexes" << std::endl;
             return kmers_indexes;

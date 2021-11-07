@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <cmath>
+
 #include "config/config.hpp"
 
 namespace tandem_mapper::cms_utils {

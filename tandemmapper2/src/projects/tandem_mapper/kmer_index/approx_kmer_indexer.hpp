@@ -14,7 +14,7 @@
 #include "kmer_index.hpp"
 #include "kmer_window.hpp"
 
-namespace tandem_mapper::kmer_index::sketch_contigs {
+namespace tandem_mapper::kmer_index::approx_kmer_indexer {
 
 template<typename htype>
 class ApproxKmerIndexer {
@@ -164,12 +164,12 @@ class ApproxKmerIndexer {
   }
 };
 
-}// End namespace tandem_mapper::kmer_index::sketch_contigs
+}// End namespace tandem_mapper::kmer_index::approx_kmer_indexer
 
 // uint64_t get_n_unique_kmers() {
 //   using namespace tandem_mapper::kmer_index::kmer_filter;
 //   uint64_t n_unique_kmers{0};
-//   for (auto [itcontig, itsc] = std::pair{contigs.cbegin(), sketch_contigs.cbegin()};
+//   for (auto [itcontig, itsc] = std::pair{contigs.cbegin(), approx_kmer_indexer.cbegin()};
 //        itcontig != contigs.cend();
 //        ++itcontig, ++itsc) {
 //     const Contig &contig = *itcontig;
@@ -228,7 +228,7 @@ class ApproxKmerIndexer {
 //             for (const auto [x, y] : hashes) {
 //                 kmer_type::KmerType kmer_type =
 //                         tandem_mapper::kmer_index::kmer_type::get_kmer_type(x, y,
-//                                                                             sketch_contigs,
+//                                                                             approx_kmer_indexer,
 //                                                                             ban_filter,
 //                                                                             max_cnt);
 //                 if (kmer_type == kmer_type::KmerType::unique) {
