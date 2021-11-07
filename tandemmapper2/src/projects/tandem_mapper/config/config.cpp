@@ -20,10 +20,12 @@ Config Config::load_config_file(const std::filesystem::path & config_fn) {
     using std::stoull, std::stoll, std::stod, std::stoi;
     Config::CommonParams common_params {stoull(m.at("k"))};
     Config::HashParams hash_params {stoull(m.at("base"))};
-    Config::KmerIndexerParams::ApproximateKmerIndexerParams aprx_kmer_indexer_params
-        {stod(m.at("false_positive_probability")),
+    Config::KmerIndexerParams::ApproximateKmerIndexerParams aprx_kmer_indexer_params {
+         stod(m.at("false_positive_probability")),
          stod(m.at("exp_base")),
-         stoi(m.at("nhash"))};
+         stoi(m.at("nhash")),
+         stoull(m.at("chunk_size"))
+        };
     Config::KmerIndexerParams kmer_indexer_params {stoull(m.at("min_uncovered_len")),
                                                    stoull(m.at("max_rare_cnt_target")),
                                                    // stoull(m.at("max_rare_cnt_query")),
@@ -31,7 +33,8 @@ Config Config::load_config_file(const std::filesystem::path & config_fn) {
                                                    stoull(m.at("k_window_size")),
                                                    stod(m.at("window_unique_density")),
                                                    Config::KmerIndexerParams::str2strategy(m.at("strategy")),
-                                                   aprx_kmer_indexer_params };
+                                                   aprx_kmer_indexer_params,
+                                                   stod(m.at("careful_upper_bnd_cov_mult"))};
     Config::Chain2SAMParams::KSW2Params ksw_2_params {static_cast<int8_t>(stoi(m.at("match_score"))),
                                                       static_cast<int8_t>(stoi(m.at("mis_score"))),
                                                       static_cast<int8_t>(stoi(m.at("gapo"))),

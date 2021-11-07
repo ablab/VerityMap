@@ -154,7 +154,8 @@ public:
     Logger & info() {
         std::cout << time.get() << " INFO: ";
         for(std::ofstream *os : oss) {
-            *os << time.get() << " INFO: ";
+          os->flush();
+          *os << time.get() << " INFO: ";
         }
         return *this;
     }
@@ -163,7 +164,8 @@ public:
         if(debug) {
             std::cout << time.get() << " TRACE: ";
             for (std::ofstream *os : oss) {
-                *os << time.get() << " TRACE: ";
+              os->flush();
+              *os << time.get() << " TRACE: ";
             }
             return *this;
         } else {
