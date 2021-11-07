@@ -16,11 +16,6 @@
 
 namespace tandem_mapper::kmer_index::sketch_contigs {
 
-size_t hash_combine(size_t lhs, size_t rhs) {
-  lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
-  return lhs;
-}
-
 template<typename htype>
 class ApproxKmerIndexer {
   size_t nthreads{0};
@@ -36,14 +31,15 @@ class ApproxKmerIndexer {
 
   std::vector<size_t> BinHashesInChunk(std::vector<std::vector<HashPosType>> &hashes_pos,
                                        const kmer_filter::KmerFilter &kmer_filter,
-                                       KWH<htype> &kwh) const {
+                                       KWH<htype> &kwh,
+                                       const size_t ctg_ind) const {
     std::vector<size_t> sizes(nthreads, 0);
-    auto process_chunk = [this, &hashes_pos, &sizes, &kmer_filter](size_t i) {
+    auto process_chunk = [this, &hashes_pos, &sizes, &kmer_filter, &ctg_ind](size_t i) {
       std::vector<HashPosType> &hashes_pos_th = hashes_pos[i];
       const size_t size = sizes[i];
       for (int j = 0; j < size; ++j) {
         const htype fhash = hashes_pos_th[j].fhash;
-        hashes_pos_th[j].kmer_type = kmer_filter.GetKmerType(fhash, i, kmer_indexer_params.max_rare_cnt_target);
+        hashes_pos_th[j].kmer_type = kmer_filter.GetKmerType(ctg_ind, fhash, i, kmer_indexer_params.max_rare_cnt_target);
       }
     };
 
@@ -80,7 +76,8 @@ class ApproxKmerIndexer {
   }
 
   [[nodiscard]] KmerIndex GetKmerIndex(const Contig &contig,
-                                       const kmer_filter::KmerFilter &kmer_filter) const {
+                                       const kmer_filter::KmerFilter &kmer_filter,
+                                       const size_t ctg_ind = 0) const {
     if (contig.size() < hasher.k) {
       return {};
     }
@@ -92,7 +89,7 @@ class ApproxKmerIndexer {
     const size_t window_size = kmer_indexer_params.k_window_size;
     kmer_window::KmerWindow kmer_window(window_size);
     while (true) {
-      std::vector<size_t> sizes = BinHashesInChunk(hashes_pos, kmer_filter, kwh);
+      std::vector<size_t> sizes = BinHashesInChunk(hashes_pos, kmer_filter, kwh, ctg_ind);
       std::cout << kwh.pos << "\n";
 
       std::vector<std::tuple<size_t, htype, bool>> pos_hash_uniq;
@@ -126,8 +123,9 @@ class ApproxKmerIndexer {
   [[nodiscard]] KmerIndexes GetKmerIndexes(const std::vector<Contig> &contigs,
                                            const kmer_filter::KmerFilter &kmer_filter) const {
     KmerIndexes kmer_indexes;
-    for (const Contig &contig : contigs) {
-      kmer_indexes.emplace_back(GetKmerIndex(contig, kmer_filter));
+    for (auto it = contigs.cbegin(); it != contigs.cend(); ++it) {
+      const Contig &contig{*it};
+      kmer_indexes.emplace_back(GetKmerIndex(contig, kmer_filter, it - contigs.cbegin()));
     }
     return kmer_indexes;
   }
