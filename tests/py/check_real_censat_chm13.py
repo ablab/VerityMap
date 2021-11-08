@@ -9,8 +9,8 @@ from joblib import Parallel, delayed
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_INPUT = "/Poppy/abzikadze/centroFlye/centroFlye_repo/data-share/tandemtools2/censat"
-DEFAULT_TMBIN = os.path.join(SCRIPT_DIR, os.pardir, os.pardir,
-                             'build', 'bin', 'tandem_mapper')
+DEFAULT_VMBIN = os.path.join(SCRIPT_DIR, os.pardir, os.pardir,
+                             'build', 'bin', 'veritymap')
 DEFAULT_CENSAT_BED = os.path.join(DEFAULT_INPUT, "cenAnnotation.merged.bed")
 DEFAULT_REF_FAI = os.path.join(DEFAULT_INPUT, "ref_v1", "chm13.draft_v1.0.fasta.fai")
 
@@ -40,14 +40,14 @@ def get_censats_info(censat_bed_fn, ref_fai_fn):
     return censats_info
 
 
-def parallel_process(outdir, datadir, censat_info, tandem_mapper_bin, threads,
+def parallel_process(outdir, datadir, censat_info, veritymap_bin, threads,
                      only_index):
     outdir = os.path.join(outdir, censat_info.chrom)
     queries_fn = os.path.join(datadir, "real_reads", "censat",
                               censat_info.chrom + "_censat.fasta")
     target_fn = os.path.join(datadir, "references",
                              censat_info.chrom + "_censat.fasta")
-    cmd = tandem_mapper_bin + " --target %s --queries %s -o %s -t %d" % \
+    cmd = veritymap_bin + " --target %s --queries %s -o %s -t %d" % \
         (target_fn, queries_fn, outdir, threads)
     if only_index:
         cmd += " --only-index"
@@ -61,7 +61,7 @@ def merge_sam(outdir, censats_info, cmd, threads):
     with open(merged_sam_fn, 'w') as f:
         for chrom, censat_info in censats_info.items():
             print(f'@SQ\tSN:{chrom}\tLN:{censat_info.full_len}', file=f)
-        print(f'@PG\tID:tandemMapper2\tPN:tandemMapper2\tVN:2.0\tCL:{cmd}',
+        print(f'@PG\tID:VerityMap\tPN:VerityMap\tVN:2.0\tCL:{cmd}',
               file=f)
     with open(merged_sam_fn, 'a') as f:
         for chrom, censat_info in censats_info.items():
@@ -110,8 +110,8 @@ def main():
     parser.add_argument("--threads", type=int, default=10)
     parser.add_argument("--n-jobs", type=int, default=3)
     parser.add_argument("--outdir", "-o", required=True)
-    parser.add_argument("--tandem-mapper-bin",
-                        default=DEFAULT_TMBIN)
+    parser.add_argument("--veritymap-bin",
+                        default=DEFAULT_VMBIN)
     parser.add_argument("--censat-bed", default=DEFAULT_CENSAT_BED)
     parser.add_argument("--ref-fai", default=DEFAULT_REF_FAI)
     parser.add_argument("--only-index", action="store_true")
@@ -122,7 +122,7 @@ def main():
 
     Parallel(n_jobs=params.n_jobs)(delayed(parallel_process)\
         (params.outdir, params.datadir, censat_info,
-         params.tandem_mapper_bin, params.threads, params.only_index)
+         params.veritymap_bin, params.threads, params.only_index)
         for censat_info in censats_info.values())
 
     merge_results(params.outdir, censats_info, cmd,

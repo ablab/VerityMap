@@ -1,5 +1,5 @@
 package:
-  name: "tandemmapper2"
+  name: "veritymap"
   version: "2.0.0"
 
 source:
@@ -37,8 +37,8 @@ requirements:
 
 test:
   commands:
-    - tandemmapper2 --help 
+    - veritymap --help 
 
 about:
-  home: https://github.com/ablab/TandemMapper2
+  home: https://github.com/ablab/VerityMap
   license: GPLv3
