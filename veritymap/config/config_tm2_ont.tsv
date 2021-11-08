@@ -8,8 +8,8 @@ k_step_size 10
 k_window_size   100000
 window_unique_density   0.99
 strategy    approximate
-false_positive_probability  1e-05
-exp_base    1
+false_positive_probability  1e-03
+exp_base    0.01
 nhash   5
 chunk_size 5000000
 careful_upper_bnd_cov_mult  1.5
