@@ -14,7 +14,7 @@ outdir=sys.argv[2]
 from pathlib import Path
 Path(outdir).mkdir(parents=True, exist_ok=True)
 
-tandem_mapper_bin = sys.argv[3]
+veritymap_bin = sys.argv[3]
 
 chroms = []
 chrom_len= dict()
@@ -30,7 +30,7 @@ def parallel_process(outdir, chrom, s, e):
     outdir = outdir + "/" + chrom
     reads_fasta_file = datadir + "/simulated_reads/" + chrom + "_censat_0001.fasta"
     fasta_file = datadir + "/references/" + chrom + "_censat.fasta"
-    cmd = tandem_mapper_bin + " --target %s --queries %s -o %s -t %d" % (fasta_file, reads_fasta_file, outdir, threads)
+    cmd = veritymap_bin + " --target %s --queries %s -o %s -t %d" % (fasta_file, reads_fasta_file, outdir, threads)
     print(cmd)
     subprocess.call(cmd.split())
     print(chrom, " FINISHED!")

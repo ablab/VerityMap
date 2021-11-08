@@ -13,7 +13,7 @@ from setuptools import setup
 from distutils.command.build import build as DistutilsBuild
 from distutils.spawn import find_executable
 
-from tandemmapper2.__version__ import __version__
+from veritymap.__version__ import __version__
 
 
 # Make sure we're running from the setup.py directory.
@@ -24,14 +24,14 @@ if script_dir != os.getcwd():
 
 description = \
     """
-TandemMapper2 aligns long PacBio Hi-Fi and ONT reads to
+VerityMap aligns long PacBio Hi-Fi and ONT reads to
 genome assemblies (including long repetitive regions)
 """
 
 
 class MakeBuild(DistutilsBuild):
     def run(self):
-        os.chdir(os.path.join(script_dir, "tandemmapper2"))
+        os.chdir(os.path.join(script_dir, "veritymap"))
         if not find_executable("make"):
             sys.exit("ERROR: 'make' command is unavailable")
         try:
@@ -43,20 +43,20 @@ class MakeBuild(DistutilsBuild):
 
 
 setup(
-    name="TandemMapper2",
+    name="VerityMap",
     version="2.0.0",
     description=description,
-    url='https://github.com/ablab/TandemMapper2',
+    url='https://github.com/ablab/VerityMap',
     author='Alla Mikheenko',
     author_email='al.miheenko@gmail.com',
     license='GNU General Public License v3.0',
     install_requires=[
     'plotly', 'python-slugify', 'biopython', 'numpy'],
-    packages=['tandemmapper2'],
-    package_dir={'tandemmapper2': 'tandemmapper2'},
-    package_data={'tandemmapper2': ['build/bin/tandem_mapper', 'config/*', '*', 'py_src/*', 'test_dataset/*',]},
+    packages=['veritymap'],
+    package_dir={'veritymap': 'veritymap'},
+    package_data={'veritymap': ['build/bin/veritymap', 'config/*', '*', 'py_src/*', 'test_dataset/*',]},
     entry_points={
-        'console_scripts': ['tandemmapper2=tandemmapper2.main:main']
+        'console_scripts': ['veritymap=veritymap.main:main']
     },
     cmdclass={'build': MakeBuild}
 )

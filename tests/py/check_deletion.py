@@ -12,11 +12,11 @@ read_lens=dict()
 
 datadir = sys.argv[1]
 outdir = sys.argv[2]
-tandem_mapper_bin = sys.argv[3]
+veritymap_bin = sys.argv[3]
 
 fasta_file = join(datadir, "chr7_ext_del.fasta")
 reads_fasta_file = join(datadir, "chr7_ext_subreads.fasta")
-cmd = tandem_mapper_bin + " --target %s --queries %s -o %s -t 10" % (fasta_file, reads_fasta_file, outdir)
+cmd = veritymap_bin + " --target %s --queries %s -o %s -t 10" % (fasta_file, reads_fasta_file, outdir)
 print(cmd)
 subprocess.call(cmd.split())
 

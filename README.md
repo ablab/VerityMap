@@ -2,7 +2,7 @@
 
 ## Quick start
 ```shell
-    tandemmapper2 --reads test_data/test_query.fasta test_data/test_target.fasta -o test_outdir -d hifi
+    veritymap --reads test_data/test_query.fasta test_data/test_target.fasta -o test_outdir -d hifi
 ```
 
 ## Introduction
@@ -16,7 +16,7 @@ Requirements are listed in ```requirements.txt``` and can be installed through C
 ## Usage
 
 ```shell
-tandemmapper2 [options] --reads <reads_file> -d <hifi,ont> -o <output_dir> <assembly_file1> <assembly_file2>
+veritymap [options] --reads <reads_file> -d <hifi,ont> -o <output_dir> <assembly_file1> <assembly_file2>
 
 Required arguments:
     --reads         PATH                 File with Oxford Nanopore or PacBio HiFi reads used for ETR assembly
@@ -30,7 +30,7 @@ Optional arguments:
 In case VerityMap is built locally, it should be run as follows:
 
 ```shell
-python tandemmapper2/main.py [options] --reads <reads_file> -d <hifi,ont> -o <output_dir> <assembly_file1> <assembly_file2>
+python veritymap/main.py [options] --reads <reads_file> -d <hifi,ont> -o <output_dir> <assembly_file1> <assembly_file2>
 ```
 
 ## Output files
