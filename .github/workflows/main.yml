@@ -25,12 +25,12 @@ jobs:
       working-directory: ${{github.workspace}}
       shell: bash
       run: |
-        cd tandemmapper2
+        cd veritymap
         make build_type=$BUILD_TYPE
 
     - name: TestLaunch
       working-directory: ${{github.workspace}}
       shell: bash
       run: |
-        cd tandemmapper2
+        cd veritymap
         make test_launch
