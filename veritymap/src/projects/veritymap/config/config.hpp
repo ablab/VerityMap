@@ -18,7 +18,7 @@ struct Config {
   CommonParams common_params;
 
   struct HashParams {
-    using htype = unsigned __int128;
+    using htype = uint64_t;
     size_t base;
   };
   HashParams hash_params;
