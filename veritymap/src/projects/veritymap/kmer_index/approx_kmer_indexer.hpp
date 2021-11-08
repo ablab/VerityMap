@@ -86,6 +86,7 @@ class ApproxKmerIndexer {
     KWH<htype> kwh({hasher, contig.seq, 0});
     const size_t window_size = kmer_indexer_params.k_window_size;
     kmer_window::KmerWindow kmer_window(window_size);
+    const size_t step_size = kmer_indexer_params.k_step_size;
     while (true) {
       logger.info() << "Pos = " << kwh.pos << "\n";
       logger.info() << "Running jobs for chunk \n";
@@ -110,7 +111,7 @@ class ApproxKmerIndexer {
       logger.info() << "Extending kmer index \n";
       for (const auto &[pos, hash, is_unique] : pos_hash_uniq) {
         kmer_window.add(pos, is_unique);
-        if ((kmer_window.unique_frac() < kmer_indexer_params.window_unique_density) or (pos % window_size == 0)) {
+        if ((kmer_window.unique_frac() < kmer_indexer_params.window_unique_density) or (pos % step_size == 0)) {
           kmer_index[hash].emplace_back(pos);
         }
       }
