@@ -5,10 +5,10 @@ min_end_ident   0.9
 max_rare_cnt_target 30
 max_rare_cnt_query  1
 k_step_size 10
-k_window_size   100000
-window_unique_density   0.99
+k_window_size   30000
+window_unique_density   0.9
 strategy    approximate
-false_positive_probability  1e-03
+false_positive_probability  0.01
 exp_base    0.01
 nhash   5
 chunk_size 5000000
