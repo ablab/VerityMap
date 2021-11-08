@@ -2,7 +2,7 @@
 
 ## Quick start
 ```shell
-    veritymap --reads test_data/test_query.fasta test_data/test_target.fasta -o test_outdir -d hifi
+    veritymap --reads test_dataset/test_query.fasta test_dataset/test_target.fasta -o test_outdir -d hifi
 ```
 
 ## Introduction
