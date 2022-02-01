@@ -6,7 +6,7 @@ max_rare_cnt_target 10
 max_rare_cnt_query  1
 k_step_size 50
 k_window_size   30000
-window_unique_density   0.9
+window_unique_density   0.99
 strategy    approximate
 false_positive_probability  0.01
 exp_base    0.01
