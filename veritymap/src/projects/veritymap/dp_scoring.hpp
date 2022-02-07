@@ -50,24 +50,32 @@ ScoresBacktracks get_scores(const matches::Matches& matches,
       }
 
       const match_pos_type jump_penalty = std::min(std::abs(query_jump), std::abs(target_jump));
-      const match_pos_type dist_diff = std::abs(std::abs(query_jump) - std::abs(target_jump));
+        const match_pos_type
+            dist_diff = std::abs(std::abs(query_jump) - std::abs(target_jump));
 
-      const score_type diff_penalty = dist_diff <= chaining_params.max_supp_dist_diff ? 0 : static_cast<score_type>(dist_diff) / (jump_penalty + 1);
+        const score_type diff_penalty =
+            dist_diff <= chaining_params.max_supp_dist_diff ? 0 :
+            static_cast<score_type>(dist_diff)/(jump_penalty + 1);
 
-      const score_type overlap_penalty =
-          std::min<score_type>(1, static_cast<score_type>(query_jump + common_params.k) / common_params.k);
+        const score_type overlap_penalty =
+            std::min<score_type>(1,
+                                 static_cast<score_type>(query_jump
+                                     + common_params.k)/common_params.k);
 
-      if (overlap_penalty < 1) {
-        VERIFY(diff_penalty == 0);
-      }
-      const score_type cur_score = *sc_it + freq_weight * overlap_penalty - std::min(chaining_params.diff_penalty_mult * diff_penalty, chaining_params.misassembly_penalty);
+        if (overlap_penalty < 1) {
+            VERIFY(diff_penalty==0);
+        }
+        score_type cur_score = *sc_it + freq_weight*overlap_penalty -
+            std::min(chaining_params.diff_penalty_mult*diff_penalty,
+                     chaining_params.misassembly_penalty*(1
+                         + dist_diff/chaining_params.misassembly_penalty_mult));
 
-      if (cur_score > score) {
-        score = cur_score;
-        VERIFY(scores.size() - 1 >= sc_it - scores.rbegin());
-        backtrack = scores.size() - 1 - (sc_it - scores.rbegin());
-        VERIFY(backtrack < scores.size());
-      }
+        if (cur_score > score) {
+            score = cur_score;
+            VERIFY(scores.size() - 1 >= sc_it - scores.rbegin());
+            backtrack = scores.size() - 1 - (sc_it - scores.rbegin());
+            VERIFY(backtrack < scores.size());
+        }
     }
     VERIFY(score >= freq_weight);
     scores.emplace_back(score);

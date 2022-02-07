@@ -67,7 +67,8 @@ struct Config {
     double max_top_score_prop;
     match_pos_type max_jump;
     score_type misassembly_penalty;
-    score_type diff_penalty_mult;
+      score_type misassembly_penalty_mult;
+      score_type diff_penalty_mult;
     size_t min_chain_range;
     size_t max_supp_dist_diff;
     // static_assert(min_chain_range / KmerIndexerParams::k_step_size >= min_matches);
