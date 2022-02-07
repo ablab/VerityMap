@@ -18,6 +18,7 @@ min_score   0
 max_top_score_prop  0.9
 max_jump    100000
 misassembly_penalty_base    1000
+misassembly_penalty_mult    10000
 diff_penalty_mult   10
 min_chain_range 5000
 max_supp_dist_diff  5
