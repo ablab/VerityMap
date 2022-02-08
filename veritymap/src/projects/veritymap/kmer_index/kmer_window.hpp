@@ -50,8 +50,6 @@ class KmerWindow {
         half_length{(int64_t) length/2}, pos_hash_uniq{pos_hash_uniq},
         next_it{pos_hash_uniq.cbegin()}, cur_it{pos_hash_uniq.cbegin()} {
         VERIFY(length >= 1);
-        VERIFY(not pos_hash_uniq.empty());
-        IncRight();
     }
 
     [[nodiscard]] double UniqueFrac() const {
@@ -61,6 +59,12 @@ class KmerWindow {
     void Inc() {
         ++cur_it;
         IncLeft();
+        IncRight();
+    }
+
+    void Reset() {
+        next_it = pos_hash_uniq.cbegin();
+        cur_it = pos_hash_uniq.cbegin();
         IncRight();
     }
 };
