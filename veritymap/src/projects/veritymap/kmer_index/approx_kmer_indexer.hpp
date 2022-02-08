@@ -85,7 +85,6 @@ class ApproxKmerIndexer {
     KmerIndex kmer_index;
     KWH<htype> kwh({hasher, contig.seq, 0});
     const size_t window_size = kmer_indexer_params.k_window_size;
-    kmer_window::KmerWindow kmer_window(window_size);
     const size_t step_size = kmer_indexer_params.k_step_size;
     while (true) {
       logger.info() << "Pos = " << kwh.pos << "\n";
@@ -109,11 +108,14 @@ class ApproxKmerIndexer {
       std::sort(pos_hash_uniq.begin(), pos_hash_uniq.end());
 
       logger.info() << "Extending kmer index \n";
+      kmer_window::KmerWindow kmer_window(window_size, pos_hash_uniq);
       for (const auto &[pos, hash, is_unique] : pos_hash_uniq) {
-        kmer_window.add(pos, is_unique);
-        if ((kmer_window.unique_frac() < kmer_indexer_params.window_unique_density) or (pos % step_size == 0)) {
-          kmer_index[hash].emplace_back(pos);
-        }
+          kmer_window.Inc();
+          if ((kmer_window.UniqueFrac()
+              < kmer_indexer_params.window_unique_density)
+              or (pos%step_size==0)) {
+              kmer_index[hash].emplace_back(pos);
+          }
       }
 
       logger.info() << "Finished working with the chunk \n";
