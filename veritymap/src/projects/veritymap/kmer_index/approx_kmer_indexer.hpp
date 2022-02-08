@@ -76,47 +76,56 @@ class ApproxKmerIndexer {
                                        const kmer_filter::KmerFilter &kmer_filter,
                                        const size_t ctg_ind,
                                        logging::Logger &logger) const {
-    if (contig.size() < hasher.k) {
-      return {};
-    }
+      if (contig.size() < hasher.k) {
+          return {};
+      }
 
-    std::vector<std::vector<HashPosType>> hashes_pos(nthreads);
+      std::vector<std::vector<HashPosType>> hashes_pos(nthreads);
 
-    KmerIndex kmer_index;
-    KWH<htype> kwh({hasher, contig.seq, 0});
-    const size_t window_size = kmer_indexer_params.k_window_size;
-    const size_t step_size = kmer_indexer_params.k_step_size;
-    while (true) {
-      logger.info() << "Pos = " << kwh.pos << "\n";
-      logger.info() << "Running jobs for chunk \n";
-      std::vector<size_t> sizes = BinHashesInChunk(hashes_pos, kmer_filter, kwh, ctg_ind);
-
-      logger.info() << "Preparing kmer positions for sort \n";
+      KmerIndex kmer_index;
+      KWH<htype> kwh({hasher, contig.seq, 0});
+      const size_t window_size = kmer_indexer_params.k_window_size;
+      const size_t step_size = kmer_indexer_params.k_step_size;
       std::vector<std::tuple<size_t, htype, bool>> pos_hash_uniq;
-      for (size_t ithread = 0; ithread < nthreads; ++ithread) {
-        const auto &hashes_pos_th = hashes_pos[ithread];
-        for (size_t j = 0; j < sizes[ithread]; ++j) {
-          const auto &hash_pos = hashes_pos_th[j];
-          if (hash_pos.kmer_type == kmer_filter::KmerType::unique or hash_pos.kmer_type == kmer_filter::KmerType::rare) {
-            const bool is_unique = hash_pos.kmer_type == kmer_filter::KmerType::unique;
-            pos_hash_uniq.emplace_back(hash_pos.pos, hash_pos.fhash, is_unique);
-          }
-        }
-      }
-
-      logger.info() << "Sorting kmer positions \n";
-      std::sort(pos_hash_uniq.begin(), pos_hash_uniq.end());
-
-      logger.info() << "Extending kmer index \n";
       kmer_window::KmerWindow kmer_window(window_size, pos_hash_uniq);
-      for (const auto &[pos, hash, is_unique] : pos_hash_uniq) {
-          kmer_window.Inc();
-          if ((kmer_window.UniqueFrac()
-              < kmer_indexer_params.window_unique_density)
-              or (pos%step_size==0)) {
-              kmer_index[hash].emplace_back(pos);
+      while (true) {
+          logger.info() << "Pos = " << kwh.pos << "\n";
+          logger.info() << "Running jobs for chunk \n";
+          std::vector<size_t>
+              sizes = BinHashesInChunk(hashes_pos, kmer_filter, kwh, ctg_ind);
+
+          logger.info() << "Preparing kmer positions for sort \n";
+          for (size_t ithread = 0; ithread < nthreads; ++ithread) {
+              const auto &hashes_pos_th = hashes_pos[ithread];
+              for (size_t j = 0; j < sizes[ithread]; ++j) {
+                  const auto &hash_pos = hashes_pos_th[j];
+          if (hash_pos.kmer_type == kmer_filter::KmerType::unique or hash_pos.kmer_type == kmer_filter::KmerType::rare) {
+              const bool
+                  is_unique = hash_pos.kmer_type==kmer_filter::KmerType::unique;
+              pos_hash_uniq
+                  .emplace_back(hash_pos.pos, hash_pos.fhash, is_unique);
           }
-      }
+              }
+          }
+
+          logger.info() << "Sorting kmer positions \n";
+          std::sort(pos_hash_uniq.begin(), pos_hash_uniq.end());
+
+          logger.info() << "Extending kmer index \n";
+          kmer_window.Reset();
+          for (auto it = pos_hash_uniq.begin(); it!=pos_hash_uniq.end(); ++it) {
+              const auto[pos, hash, is_unique] = *it;
+              kmer_window.Inc();
+              if (kwh.hasNext() and kwh.pos - pos < window_size/2) {
+                  pos_hash_uniq = {it, pos_hash_uniq.end()};
+                  break;
+              }
+              if ((kmer_window.UniqueFrac()
+                  < kmer_indexer_params.window_unique_density)
+                  or (pos%step_size==0)) {
+                  kmer_index[hash].emplace_back(pos);
+              }
+          }
 
       logger.info() << "Finished working with the chunk \n";
       if (not kwh.hasNext()) {
