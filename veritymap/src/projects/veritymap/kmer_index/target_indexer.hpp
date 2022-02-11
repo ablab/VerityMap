@@ -42,8 +42,8 @@ get_indexed_targets(const std::vector<Contig>& queries,
     return indexed_targets;
   }
 
-  const std::vector<KmerIndex> kmers_indexes = [&queries, &targets, &nthreads, &hasher, &common_params, &kmer_indexer_params,
-                                                &index_path, &logger] {
+  std::vector<KmerIndex> kmers_indexes = [&queries, &targets, &nthreads, &hasher, &common_params, &kmer_indexer_params,
+                                          &index_path, &logger] {
     if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::exact) {
       logger.info() << "Getting exact kmer indexes..." << std::endl;
       std::vector<KmerIndex> kmers_indexes =
@@ -64,7 +64,7 @@ get_indexed_targets(const std::vector<Contig>& queries,
   IndexedContigs indexed_targets;
   for (auto it = kmers_indexes.begin(); it != kmers_indexes.end(); ++it) {
     const Contig& target = targets.at(it - kmers_indexes.begin());
-    indexed_targets.emplace_back(target, hasher, kmer_indexer_params.max_rare_cnt_target, *it);
+    indexed_targets.emplace_back(target, hasher, kmer_indexer_params.max_rare_cnt_target, std::move(*it));
   }
 
   std::ofstream kmer_indexes_os(kmer_indexes_fn);
