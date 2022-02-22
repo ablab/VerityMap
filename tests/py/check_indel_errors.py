@@ -16,8 +16,8 @@ if len(sys.argv) > 6:
 DIFF_POS_THRESHOLD=100
 DIFF_THRESHOLD=100
 
-fasta_file = join(datadir, "chr9_censat_del2.fasta")
-reads_fasta_file = join(datadir, "chr9_censat_reads.fasta")
+fasta_file = join(datadir, "reference.fasta")
+reads_fasta_file = join(datadir, "reads.fasta")
 cmd = veritymap_bin + " --target %s --queries %s -o %s -t 10 %s" % (fasta_file, reads_fasta_file, outdir, additional_option)
 print(cmd)
 subprocess.call(cmd.split())
