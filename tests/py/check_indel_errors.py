@@ -22,7 +22,7 @@ cmd = veritymap_bin + " --target %s --queries %s -o %s -t 10 %s" % (fasta_file, 
 print(cmd)
 subprocess.call(cmd.split())
 
-maf_file = join(datadir, "chr9_censat_0001.txt")
+maf_file = join(datadir, "maf.txt")
 real_pos = dict()
 read_lens=dict()
 with open(maf_file) as f:
