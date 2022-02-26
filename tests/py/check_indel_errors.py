@@ -43,7 +43,7 @@ outside_diff = 0
 chains = join(outdir, "chains.tsv")
 with open(chains) as f:
     for line in f:
-        fs = line.split()
+        if not fs or 'Aln' not in fs[0]: fs = line.split()
         if 'Aln' not in fs[0]: continue
         read_name, ref_name, read_s, read_e, read_len, ref_s, ref_e = fs[1:8]
         read_name=read_name.replace('+','').replace('-','')
@@ -52,29 +52,28 @@ with open(chains) as f:
         shift1 = 0
         if ref_s >= del_pos:
             shift1 += del_len
-        if True: #ref_s+1 < del_pos < ref_e:
-            prev_pos, prev_read_pos = 0, 0
+        prev_pos, prev_read_pos = 0, 0
+        line = f.readline()
+        while True:
             line = f.readline()
-            while True:
-                line = f.readline()
-                if not line or 'Aln' in line: break
-                fs = line.split()
-                read_pos, ref_pos = int(fs[0]), int(fs[1])
-                ref_diff = abs(ref_pos - prev_pos)
-                read_diff = abs(read_pos - prev_read_pos)
-                diff = abs(ref_diff-read_diff)
-                if prev_pos and prev_pos < del_pos < ref_pos:
-                    if abs(del_len)-100 < abs(diff) < abs(del_len)+100: 
-                        #print(read_name,diff, line)
-                        reads_w_diff+=1
-                    else:
-                        #print("Mapped with incorrect diff", read_name,diff)
-                        reads_wo_diff +=1
-                elif prev_pos and abs(diff) > DIFF_THRESHOLD:
-                    #print("Mapped with diff", diff, "outside the del_len:", read_name, prev_pos)
-                    outside_diff +=1
-                prev_pos = ref_pos
-                prev_read_pos = read_pos
+            fs = line.split()
+            if not line or 'Aln' in line: break
+            read_pos, ref_pos = int(fs[0]), int(fs[1])
+            ref_diff = abs(ref_pos - prev_pos)
+            read_diff = abs(read_pos - prev_read_pos)
+            diff = abs(ref_diff-read_diff)
+            if prev_pos and prev_pos < del_pos-1 <= ref_pos:
+                if abs(del_len)-100 < abs(diff) < abs(del_len)+100:
+                    #print(read_name,diff, line)
+                    reads_w_diff+=1
+                else:
+                    #print("Mapped with incorrect diff", read_name,diff)
+                    reads_wo_diff +=1
+            elif prev_pos and abs(diff) > DIFF_THRESHOLD:
+                #print("Mapped with diff", diff, "outside the del_len:", read_name, prev_pos)
+                outside_diff +=1
+            prev_pos = ref_pos
+            prev_read_pos = read_pos
         #read_len = read_lens[read_name]
         read_shift = read_s
         tm_pos[read_name] = (max(0,ref_s-read_shift+shift1),10000)
