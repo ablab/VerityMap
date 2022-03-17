@@ -42,8 +42,7 @@ Config Config::load_config_file(const std::filesystem::path& config_fn) {
                                          stod(m.at("min_score")),
                                          stod(m.at("max_top_score_prop")),
                                          stoll(m.at("max_jump")),
-                                         stod(m.at("misassembly_penalty_base"))
-                                             /stod(m.at("k")),
+                                         stod(m.at("misassembly_penalty_base")),
                                          stod(m.at("misassembly_penalty_mult")),
                                          stod(m.at("diff_penalty_mult")),
                                          stoull(m.at("min_chain_range")),
