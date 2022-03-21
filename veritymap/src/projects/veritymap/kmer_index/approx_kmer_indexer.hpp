@@ -152,9 +152,8 @@ class ApproxKmerIndexer {
   ApproxKmerIndexer &operator=(ApproxKmerIndexer &&) = delete;
 
   // TODO add careful mode
-  // TODO change readset to optional
   [[nodiscard]] KmerIndexes extract(const std::vector<Contig> &contigs,
-                                    const std::vector<Contig> &readset,
+                                    const std::optional<std::vector<Contig>> &readset,
                                     logging::Logger &logger) const {
     const kmer_filter::KmerFilterBuilder kmer_filter_builder{nthreads, hasher, common_params, kmer_indexer_params};
     logger.info() << "Creating kmer filter\n";
