@@ -19,8 +19,6 @@ DIFF_THRESHOLD=100
 fasta_file = join(datadir, "reference.fasta")
 reads_fasta_file = join(datadir, "reads.fasta")
 cmd = veritymap_bin + " --target %s --queries %s -o %s -t 10 %s" % (fasta_file, reads_fasta_file, outdir, additional_option)
-if "careful" in additional_option:
-    cmd += " --careful"
 print(cmd)
 subprocess.call(cmd.split())
 
