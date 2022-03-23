@@ -139,27 +139,27 @@ void map(const std::filesystem::path &target_path,
          const std::string &cmd,
          const std::filesystem::path &index_path,
          Config config) {
-    if (to_compress) {
-        // TODO change that to a parameter call
-        StringContig::needs_compressing = true;
-    }
+  if (to_compress) {
+    // TODO change that to a parameter call
+    StringContig::needs_compressing = true;
+  }
 
-    std::optional<std::vector<Contig>> queries_optional;
-    if (careful_mode) {
-        queries_optional = io::SeqReader(queries_path).readAllContigs();
-    }
+  std::optional<std::vector<Contig>> queries_optional;
+  if (careful_mode) {
+    queries_optional = io::SeqReader(queries_path).readAllContigs();
+  }
 
-    const RollingHash<Config::HashParams::htype>
-        hasher(config.common_params.k, config.hash_params.base);
+  const RollingHash<Config::HashParams::htype>
+      hasher(config.common_params.k, config.hash_params.base);
 
-    io::SeqReader target_reader(target_path);
-    std::vector<Contig> targets{target_reader.readAllContigs()};
+  io::SeqReader target_reader(target_path);
+  std::vector<Contig> targets{target_reader.readAllContigs()};
 
-    for (const Contig &target : targets) {
-        logger.info() << "Target length " << target.seq.size() << ", name "
-                      << target.id
-                      << " from " << target_path << std::endl;
-    }
+  for (const Contig &target : targets) {
+    logger.info() << "Target length " << target.seq.size() << ", name "
+                  << target.id
+                  << " from " << target_path << std::endl;
+  }
 
   //const Counter query_counter = kmer_index::_get_readset_counter(hasher, queries);
   //logger.info() << query_counter.size();
@@ -174,49 +174,47 @@ void map(const std::filesystem::path &target_path,
                                       config.common_params,
                                       config.kmer_indexer_params);
 
-    const auto uncovered_fn = outdir/"norarekmers.bed";
-    std::ofstream uncovered_os(uncovered_fn);
-    kmer_index::norare_regions2bam(indexed_targets,
-                                   config.kmer_indexer_params.min_uncovered_len,
-                                   config.common_params.k,
-                                   uncovered_os);
-    logger.info() << "Finished exporting long (>= "
-                  << config.kmer_indexer_params.min_uncovered_len << " bp) "
-                  << "regions without rare k-mers to " << uncovered_fn
-                  << std::endl;
-    uncovered_os.close();
+  const auto uncovered_fn = outdir / "norarekmers.bed";
+  std::ofstream uncovered_os(uncovered_fn);
+  kmer_index::norare_regions2bam(indexed_targets,
+                                 config.kmer_indexer_params.min_uncovered_len,
+                                 config.common_params.k,
+                                 uncovered_os);
+  logger.info() << "Finished exporting long (>= "
+                << config.kmer_indexer_params.min_uncovered_len << " bp) "
+                << "regions without rare k-mers to " << uncovered_fn
+                << std::endl;
+  uncovered_os.close();
 
-    if (only_index) {
-        if (to_compress) {
-            // TODO change that to a parameter call
-            StringContig::needs_compressing = false;
-        }
-        return;
+  if (only_index) {
+    if (to_compress) {
+      // TODO change that to a parameter call
+      StringContig::needs_compressing = false;
     }
+    return;
+  }
 
-    std::vector<Contig> queries = careful_mode ?
-                                  std::move(queries_optional.value()) :
-                                  io::SeqReader(queries_path).readAllContigs();
+  std::vector<Contig> queries = careful_mode ? std::move(queries_optional.value()) : io::SeqReader(queries_path).readAllContigs();
 
-    logger.info() << "Queries from " << queries_path << ", total "
-                  << queries.size() << " sequences " << std::endl;
+  logger.info() << "Queries from " << queries_path << ", total "
+                << queries.size() << " sequences " << std::endl;
 
-    const auto chains_fn = outdir/"chains.tsv";
-    const auto sam_fn = outdir/"alignments.sam";
+  const auto chains_fn = outdir / "chains.tsv";
+  const auto sam_fn = outdir / "alignments.sam";
 
-    logger.info() << "Computing chains and sam records..." << std::endl;
-    parallel_run(indexed_targets,
-                 queries,
-                 hasher,
-                 nthreads,
-                 chains_fn,
-                 sam_fn,
-                 cmd,
-                 config,
-                 logger);
+  logger.info() << "Computing chains and sam records..." << std::endl;
+  parallel_run(indexed_targets,
+               queries,
+               hasher,
+               nthreads,
+               chains_fn,
+               sam_fn,
+               cmd,
+               config,
+               logger);
 
-    logger.info() << "Finished outputting chains to " << chains_fn
-                  << " and sam records to " << sam_fn << std::endl;
+  logger.info() << "Finished outputting chains to " << chains_fn
+                << " and sam records to " << sam_fn << std::endl;
 
   if (to_compress) {
     // TODO change that to a parameter call

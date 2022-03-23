@@ -63,7 +63,7 @@ get_indexed_targets(const std::optional<std::vector<Contig>> &queries,
 
   IndexedContigs indexed_targets;
   for (auto it = kmers_indexes.begin(); it != kmers_indexes.end(); ++it) {
-    const Contig& target = targets.at(it - kmers_indexes.begin());
+    const Contig &target = targets.at(it - kmers_indexes.begin());
     indexed_targets.emplace_back(target, hasher, kmer_indexer_params.max_rare_cnt_target, std::move(*it));
   }
 
@@ -72,7 +72,7 @@ get_indexed_targets(const std::optional<std::vector<Contig>> &queries,
   kmer_indexes_os.close();
   logger.info() << "Kmer indexes are exported to " << kmer_indexes_fn << std::endl;
 
-  for (const auto& indexed_target : indexed_targets) {
+  for (const auto &indexed_target : indexed_targets) {
     logger.info() << "Target " << indexed_target.get_contig().id
                   << ", # Rare kmers = " << indexed_target.get_kmer_index().size() << std::endl;
   }
