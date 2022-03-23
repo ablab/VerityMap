@@ -13,8 +13,9 @@
 #include "version/version.hpp"
 
 int main(int argc, char** argv) {
-  CLParser parser{{"output-dir=", "target=", "queries=", "threads=40",
-                   "compress", "only-index", "careful", "index=none", "config=hifi"},
+  CLParser parser{{"output-dir=", "target=", "queries=none", "threads=40",
+                   "compress", "only-index", "careful", "index=none",
+                   "config=hifi"},
                   {},
                   {"o=output-dir", "t=threads"}};
   parser.parseCL(argc, argv);
@@ -46,41 +47,46 @@ int main(int argc, char** argv) {
   std::time_t now = std::chrono::system_clock::to_time_t(time_point);
   logger << "Launch time: " << std::put_time(std::localtime(&now), "%c %Z") << std::endl;
 
-  std::stringstream cmd_ss;
-  for (size_t i = 0; i < argc; i++) {
-    cmd_ss << argv[i] << " ";
-  }
-  const std::string cmd = cmd_ss.str();
-  logger << "CMD: " << cmd << std::endl;
-
-  const std::filesystem::path target_path =
-      std::filesystem::canonical(parser.getValue("target"));
-  const std::filesystem::path queries_path =
-      std::filesystem::canonical(parser.getValue("queries"));
-
-  bool to_compress = parser.getCheck("compress");
-  bool only_index = parser.getCheck("only-index");
-  bool careful_mode = parser.getCheck("careful");
-
-  const std::filesystem::path index_path = [&parser] {
-    std::filesystem::path index_path = parser.getValue("index");
-    if (index_path != "none") {
-      index_path = std::filesystem::canonical(index_path);
-    } else {
-      index_path = "";
+    std::stringstream cmd_ss;
+    for (size_t i = 0; i < argc; i++) {
+        cmd_ss << argv[i] << " ";
     }
-    return index_path;
-  }();
+    const std::string cmd = cmd_ss.str();
+    logger << "CMD: " << cmd << std::endl;
 
-  const std::filesystem::path binary_path = argv[0];
-  const std::filesystem::path config_fn = [&parser, &logger, &binary_path] {
-    std::string config = parser.getValue("config");
-    std::filesystem::path dirpath = binary_path.parent_path();
-    if (config == "hifi") {
-      return dirpath / "config/config_tm2_hifi.tsv";
-    } else if (config == "ont") {
-      return dirpath / "config/config_tm2_ont.tsv";
+    const std::filesystem::path target_path =
+        std::filesystem::canonical(parser.getValue("target"));
+
+    auto get_path_w_def = [&parser](const std::string &parameter) {
+      std::filesystem::path path = parser.getValue(parameter);
+      if (path!="none") {
+          path = std::filesystem::canonical(path);
+      } else {
+          path = "";
+      }
+      return path;
+    };
+    const std::filesystem::path queries_path = get_path_w_def("queries");
+
+    bool to_compress = parser.getCheck("compress");
+    bool only_index = parser.getCheck("only-index");
+    bool careful_mode = parser.getCheck("careful");
+    if (careful_mode and queries_path=="") {
+        std::cerr << "Cannot use careful mode if no queries are provided\n";
+        return 1;
     }
+
+    const std::filesystem::path index_path = get_path_w_def("index");
+
+    const std::filesystem::path binary_path = argv[0];
+    const std::filesystem::path config_fn = [&parser, &logger, &binary_path] {
+      std::string config = parser.getValue("config");
+      std::filesystem::path dirpath = binary_path.parent_path();
+      if (config=="hifi") {
+          return dirpath/"config/config_tm2_hifi.tsv";
+      } else if (config=="ont") {
+          return dirpath/"config/config_tm2_ont.tsv";
+      }
     return static_cast<std::filesystem::path>(config);
   }();
   veritymap::Config config = veritymap::Config::load_config_file(config_fn);
