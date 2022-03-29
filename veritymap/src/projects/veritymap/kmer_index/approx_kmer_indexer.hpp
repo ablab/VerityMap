@@ -16,6 +16,18 @@
 
 namespace veritymap::kmer_index::approx_kmer_indexer {
 
+template<typename T>
+std::pair<double, double> mean_stdev(std::vector<T> const &v) {
+  double mean = v[0];
+  double variance = 0;
+  for (size_t k = 1; k < v.size(); ++k) {
+    double meanPre = mean;
+    mean += (v[k] - mean) / k;
+    variance += (v[k] - mean) * (v[k] - meanPre);
+  }
+  return {mean, std::sqrt(variance / v.size())};
+}
+
 template<typename htype>
 class ApproxKmerIndexer {
   size_t nthreads{0};
@@ -145,11 +157,6 @@ class ApproxKmerIndexer {
                               logging::Logger &logger) const {
 
     // ban unique k-mers in assembly that have unusually high coverage
-    const double coverage{tools::common::coverage_utils::get_coverage(contigs, readset)};
-    const uint max_read_freq = std::max(1.,
-                                        ceil(kmer_indexer_params
-                                                 .careful_upper_bnd_cov_mult
-                                             * coverage));
 
     Counter kmer_cnt;
     for (auto it = readset.begin(); it != readset.end(); ++it) {
@@ -182,6 +189,17 @@ class ApproxKmerIndexer {
         }
       }
     }
+
+    std::vector<size_t> kmer_cnt_vec;
+    for (auto &[hash, cnt] : kmer_cnt) {
+      kmer_cnt_vec.emplace_back(cnt);
+    }
+
+    auto [mean, stddev] = mean_stdev(kmer_cnt_vec);
+    logger.info() << "Mean (std) multiplicity of a unique k-mer = " << mean << " (" << stddev << ")\n";
+
+    const uint max_read_freq = mean + kmer_indexer_params.careful_upper_bnd_cov_mult * stddev;
+    logger.info() << "Max solid k-mer frequency in reads " << max_read_freq << "\n";
 
     uint64_t n{0};
     for (auto &[hash, cnt] : kmer_cnt) {
