@@ -52,7 +52,8 @@ ScoresBacktracks get_scores(const matches::Matches& matches,
       const match_pos_type jump_penalty = std::min(std::abs(query_jump), std::abs(target_jump));
       const match_pos_type dist_diff = std::abs(std::abs(query_jump) - std::abs(target_jump));
 
-      const score_type diff_penalty = dist_diff <= chaining_params.max_supp_dist_diff ? 0 : static_cast<score_type>(dist_diff) / (jump_penalty + 1);
+      // const score_type diff_penalty = dist_diff <= chaining_params.max_supp_dist_diff ? 0 : static_cast<score_type>(dist_diff) / (jump_penalty + 1);
+      const score_type diff_penalty = dist_diff <= chaining_params.max_supp_dist_diff ? 0 : std::log(static_cast<score_type>(dist_diff));
 
       const score_type overlap_penalty =
           std::min<score_type>(1, static_cast<score_type>(query_jump + common_params.k) / common_params.k);
