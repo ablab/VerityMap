@@ -131,7 +131,6 @@ void parallel_run(const kmer_index::IndexedContigs &indexed_targets,
 void map(const std::filesystem::path &target_path,
          const std::filesystem::path &queries_path,
          const std::filesystem::path &outdir,
-         const bool to_compress,
          const bool only_index,
          const bool careful_mode,
          const size_t nthreads,
@@ -139,11 +138,6 @@ void map(const std::filesystem::path &target_path,
          const std::string &cmd,
          const std::filesystem::path &index_path,
          Config config) {
-  if (to_compress) {
-    // TODO change that to a parameter call
-    StringContig::needs_compressing = true;
-  }
-
   std::optional<std::vector<Contig>> queries_optional;
   if (careful_mode) {
     queries_optional = io::SeqReader(queries_path).readAllContigs();
@@ -187,10 +181,6 @@ void map(const std::filesystem::path &target_path,
   uncovered_os.close();
 
   if (only_index) {
-    if (to_compress) {
-      // TODO change that to a parameter call
-      StringContig::needs_compressing = false;
-    }
     return;
   }
 
@@ -216,9 +206,5 @@ void map(const std::filesystem::path &target_path,
   logger.info() << "Finished outputting chains to " << chains_fn
                 << " and sam records to " << sam_fn << std::endl;
 
-  if (to_compress) {
-    // TODO change that to a parameter call
-    StringContig::needs_compressing = false;
-  }
 }
 }// End namespace veritymap

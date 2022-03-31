@@ -14,7 +14,7 @@
 
 int main(int argc, char** argv) {
   CLParser parser{{"output-dir=", "target=", "queries=none", "threads=40",
-                   "compress", "only-index", "careful", "index=none",
+                   "only-index", "careful", "index=none",
                    "config=hifi"},
                   {},
                   {"o=output-dir", "t=threads"}};
@@ -68,7 +68,6 @@ int main(int argc, char** argv) {
   };
   const std::filesystem::path queries_path = get_path_w_def("queries");
 
-  bool to_compress = parser.getCheck("compress");
   bool only_index = parser.getCheck("only-index");
   bool careful_mode = parser.getCheck("careful");
   if (careful_mode and queries_path == "") {
@@ -96,7 +95,7 @@ int main(int argc, char** argv) {
   logger.info() << "Config exported to " << config_out_fn << "\n";
 
   veritymap::map(target_path, queries_path, output_dir,
-                 to_compress, only_index, careful_mode, nthreads, logger, cmd, index_path, config);
+                 only_index, careful_mode, nthreads, logger, cmd, index_path, config);
 
   logger.info() << "Thank you for using VerityMap!" << std::endl;
 }
