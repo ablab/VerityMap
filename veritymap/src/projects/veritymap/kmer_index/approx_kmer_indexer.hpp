@@ -233,23 +233,17 @@ class ApproxKmerIndexer {
   ApproxKmerIndexer &operator=(const ApproxKmerIndexer &) = delete;
   ApproxKmerIndexer &operator=(ApproxKmerIndexer &&) = delete;
 
-  [[nodiscard]] KmerIndexes extract(const std::vector<Contig> &contigs,
-                                    const std::optional<std::vector<Contig>> &readset_optional,
+  [[nodiscard]] KmerIndexes extract(const std::vector<Contig> &contigs, const std::vector<Contig> &readset,
                                     logging::Logger &logger) const {
     const kmer_filter::KmerFilterBuilder kmer_filter_builder{nthreads, hasher, common_params, kmer_indexer_params};
     logger.info() << "Creating kmer filter\n";
-    const kmer_filter::KmerFilter
-        kmer_filter = kmer_filter_builder.GetKmerFilter(contigs, logger);
-    logger.info()
-        << "Finished creating kmer filter. Using it to build kmer indexes\n";
+    const kmer_filter::KmerFilter kmer_filter = kmer_filter_builder.GetKmerFilter(contigs, logger);
+    logger.info() << "Finished creating kmer filter. Using it to build kmer indexes\n";
     KmerIndexes kmer_indexes = GetKmerIndexes(contigs, kmer_filter, logger);
-    if (readset_optional.has_value()) {
-      // Careful mode
-      logger.info()
-          << "Careful mode requested. Filtering high multiplicity unique k-mers\n";
-      const std::vector<Contig> &readset = readset_optional.value();
-      BanHighFreqUniqueKmers(contigs, readset, kmer_indexes, logger);
-    }
+
+    logger.info() << "Filtering high multiplicity unique k-mers\n";
+    BanHighFreqUniqueKmers(contigs, readset, kmer_indexes, logger);
+
     return kmer_indexes;
   }
 };

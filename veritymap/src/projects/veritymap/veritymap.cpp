@@ -90,12 +90,11 @@ int main(int argc, char** argv) {
   }();
   veritymap::Config config = veritymap::Config::load_config_file(config_fn);
   const auto config_out_fn = output_dir / "config.tsv";
-  std::filesystem::copy_file(config_fn, config_out_fn,
-                             std::filesystem::copy_options::overwrite_existing);
+  std::filesystem::copy_file(config_fn, config_out_fn, std::filesystem::copy_options::overwrite_existing);
   logger.info() << "Config exported to " << config_out_fn << "\n";
 
-  veritymap::map(target_path, queries_path, output_dir,
-                 only_index, careful_mode, nthreads, logger, cmd, index_path, config);
+  veritymap::VerityMap mapper(config, logger, only_index, careful_mode, nthreads);
+  mapper.Map(target_path, queries_path, output_dir, cmd, index_path);
 
   logger.info() << "Thank you for using VerityMap!" << std::endl;
 }

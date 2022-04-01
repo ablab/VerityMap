@@ -17,16 +17,13 @@ namespace veritymap::kmer_index {
 
 using Counter = std::unordered_map<Config::HashParams::htype, size_t>;
 
-kmer_index::IndexedContigs
-get_indexed_targets(const std::optional<std::vector<Contig>> &queries,
-                    const std::vector<Contig> &targets,
-                    const std::filesystem::path &outdir,
-                    const RollingHash<Config::HashParams::htype> &hasher,
-                    const size_t nthreads,
-                    logging::Logger &logger,
-                    const std::filesystem::path &index_path,
-                    const Config::CommonParams &common_params,
-                    const Config::KmerIndexerParams &kmer_indexer_params) {
+kmer_index::IndexedContigs get_indexed_targets(const std::vector<Contig> &queries, const std::vector<Contig> &targets,
+                                               const std::filesystem::path &outdir,
+                                               const RollingHash<Config::HashParams::htype> &hasher,
+                                               const size_t nthreads, logging::Logger &logger,
+                                               const std::filesystem::path &index_path,
+                                               const Config::CommonParams &common_params,
+                                               const Config::KmerIndexerParams &kmer_indexer_params) {
   using htype = Config::HashParams::htype;
   const auto kmer_indexes_fn = outdir / "kmer_indexes.tsv";
 
