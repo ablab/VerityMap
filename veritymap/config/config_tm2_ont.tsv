@@ -12,7 +12,7 @@ false_positive_probability  0.01
 exp_base    0.01
 nhash   5
 chunk_size 5000000
-careful_upper_bnd_cov_mult  1.5
+careful_upper_bnd_cov_mult  3
 min_matches 20
 min_score   0
 max_top_score_prop  0.9

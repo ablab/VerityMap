@@ -3,7 +3,6 @@
 //
 
 #pragma once
-#include <omp.h>
 
 #include <ctime>
 
@@ -15,6 +14,20 @@
 #include "kmer_window.hpp"
 
 namespace veritymap::kmer_index::approx_kmer_indexer {
+
+template<typename K, typename V>
+std::pair<double, double> mean_stdev(const std::unordered_map<K, V> &v) {
+  auto it = v.begin();
+  double mean = it->second;
+  double variance = 0;
+  for (int k = 1; it != v.end(); ++it, ++k) {
+    double mean_pre = mean;
+    const V &val = it->second;
+    mean += (val - mean) / k;
+    variance += (val - mean) * (val - mean_pre);
+  }
+  return {mean, std::sqrt(variance / v.size())};
+}
 
 template<typename htype>
 class ApproxKmerIndexer {
@@ -138,114 +151,111 @@ class ApproxKmerIndexer {
   [[nodiscard]] KmerIndexes GetKmerIndexes(const std::vector<Contig> &contigs,
                                            const kmer_filter::KmerFilter &kmer_filter,
                                            logging::Logger &logger) const {
-      KmerIndexes kmer_indexes;
-      for (auto it = contigs.cbegin(); it!=contigs.cend(); ++it) {
-          const Contig &contig{*it};
-          logger.info() << "Creating index for contig " << contig.id << "\n";
-          kmer_indexes.emplace_back(GetKmerIndex(contig,
-                                                 kmer_filter,
-                                                 it - contigs.cbegin(),
-                                                 logger));
-      }
-      return kmer_indexes;
+    KmerIndexes kmer_indexes;
+    for (auto it = contigs.cbegin(); it != contigs.cend(); ++it) {
+      const Contig &contig{*it};
+      logger.info() << "Creating index for contig " << contig.id << "\n";
+      kmer_indexes.emplace_back(GetKmerIndex(contig,
+                                             kmer_filter,
+                                             it - contigs.cbegin(),
+                                             logger));
+    }
+    return kmer_indexes;
   }
 
-    void BanHighFreqUniqueKmers(const std::vector<Contig> &contigs,
-                                const std::vector<Contig> &readset,
-                                KmerIndexes &kmer_indexes,
-                                logging::Logger &logger) const {
+  void BanHighFreqUniqueKmers(const std::vector<Contig> &contigs,
+                              const std::vector<Contig> &readset,
+                              KmerIndexes &kmer_indexes,
+                              logging::Logger &logger) const {
 
-        // ban unique k-mers in assembly that have unusually high coverage
-        const double coverage
-            {tools::common::coverage_utils::get_coverage(contigs, readset)};
-        const uint max_read_freq = std::max(1.,
-                                            ceil(kmer_indexer_params
-                                                     .careful_upper_bnd_cov_mult
-                                                     *coverage));
+    // ban unique k-mers in assembly that have unusually high coverage
 
-        Counter kmer_cnt;
-        for (auto it = readset.begin(); it!=readset.end(); ++it) {
-            logger.trace() << it - readset.begin() << " " << readset.size()
-                           << "\n";
-            const Contig &contig = *it;
-            if (contig.size() < hasher.k) {
-                continue;
-            }
-            KWH<htype> kwh(hasher, contig.seq, 0);
-            while (true) {
-                if (!kwh.hasNext()) {
-                    break;
-                }
-                kwh = kwh.next();
-                const htype fhash = kwh.get_fhash();
-                const htype rhash = kwh.get_rhash();
-                for (const htype hash : std::vector<htype>{fhash, rhash}) {
-                    bool is_unique = false;
-                    for (const KmerIndex &index : kmer_indexes) {
-                        auto it = index.find(hash);
-                        if (it!=index.end() and it->second.size()==1) {
-                            is_unique = true;
-                            break;
-                        }
-                    }
-                    if (is_unique) {
-                        kmer_cnt[hash] += 1;
-                    }
-                }
-            }
+    logger.info() << "Counting unique k-mers from the target...\n";
+    std::unordered_map<Config::HashParams::htype, std::atomic<size_t>> unique_kmers;
+    for (const KmerIndex &index : kmer_indexes) {
+      for (const auto &[hash, pos] : index) {
+        if (pos.size() == 1) {
+          unique_kmers.emplace(hash, 0);
         }
-
-        uint64_t n{0};
-        for (auto &[hash, cnt] : kmer_cnt) {
-            if (cnt > max_read_freq) {
-                for (KmerIndex &index : kmer_indexes) {
-                    auto it = index.find(hash);
-                    if (it!=index.end()) {
-                        index.erase(it);
-                        break;
-                    }
-                }
-                ++n;
-            }
-        }
-        logger.info() << "Filtered " << n << " high multiplicity k-mers\n";
+      }
     }
+    logger.info() << "There are " << unique_kmers.size() << " unique k-mers in the target\n";
+
+    std::function<void(const Contig &)> process_read = [&unique_kmers, this](const Contig &contig) {
+      if (contig.size() < hasher.k) {
+        return;
+      }
+      KWH<htype> kwh(hasher, contig.seq, 0);
+      while (true) {
+        if (!kwh.hasNext()) {
+          break;
+        }
+        kwh = kwh.next();
+        const htype fhash = kwh.get_fhash();
+        const htype rhash = kwh.get_rhash();
+        for (const htype hash : std::vector<htype>{fhash, rhash}) {
+          auto kmer_it = unique_kmers.find(hash);
+          if (kmer_it != unique_kmers.end()) {
+            ++(kmer_it->second);
+            break;
+          }
+        }
+      }
+    };
+    process_in_parallel(readset, process_read, nthreads, true);
+
+    logger.info() << "Finished counting frequences of unique k-mers in the queries...\n";
+
+    auto [mean, stddev] = mean_stdev(unique_kmers);
+    logger.info() << "Mean (std) multiplicity of a unique k-mer = " << mean << " (" << stddev << ")\n";
+
+    const uint max_read_freq = mean + kmer_indexer_params.careful_upper_bnd_cov_mult * stddev;
+    logger.info() << "Max solid k-mer frequency in reads " << max_read_freq << "\n";
+
+    uint64_t n{0};
+    for (auto &[hash, cnt] : unique_kmers) {
+      if (cnt > max_read_freq) {
+        for (KmerIndex &index : kmer_indexes) {
+          auto it = index.find(hash);
+          if (it != index.end()) {
+            index.erase(it);
+            break;
+          }
+        }
+        ++n;
+      }
+    }
+    logger.info() << "Filtered " << n << " high multiplicity k-mers\n";
+  }
 
  public:
-    ApproxKmerIndexer(const size_t nthreads,
-                      const RollingHash<htype> &hasher,
-                      const Config::CommonParams &common_params,
-                      const Config::KmerIndexerParams &kmer_indexer_params)
-        : nthreads{nthreads},
-          hasher{hasher},
-          common_params{common_params},
-          kmer_indexer_params{
-              kmer_indexer_params} {}
+  ApproxKmerIndexer(const size_t nthreads,
+                    const RollingHash<htype> &hasher,
+                    const Config::CommonParams &common_params,
+                    const Config::KmerIndexerParams &kmer_indexer_params)
+      : nthreads{nthreads},
+        hasher{hasher},
+        common_params{common_params},
+        kmer_indexer_params{
+            kmer_indexer_params} {}
 
   ApproxKmerIndexer(const ApproxKmerIndexer &) = delete;
   ApproxKmerIndexer(ApproxKmerIndexer &&) = delete;
   ApproxKmerIndexer &operator=(const ApproxKmerIndexer &) = delete;
   ApproxKmerIndexer &operator=(ApproxKmerIndexer &&) = delete;
 
-  [[nodiscard]] KmerIndexes extract(const std::vector<Contig> &contigs,
-                                    const std::optional<std::vector<Contig>> &readset_optional,
+  [[nodiscard]] KmerIndexes extract(const std::vector<Contig> &contigs, const std::vector<Contig> &readset,
                                     logging::Logger &logger) const {
-      const kmer_filter::KmerFilterBuilder kmer_filter_builder
-          {nthreads, hasher, common_params, kmer_indexer_params};
-      logger.info() << "Creating kmer filter\n";
-      const kmer_filter::KmerFilter
-          kmer_filter = kmer_filter_builder.GetKmerFilter(contigs, logger);
-      logger.info()
-          << "Finished creating kmer filter. Using it to build kmer indexes\n";
-      KmerIndexes kmer_indexes = GetKmerIndexes(contigs, kmer_filter, logger);
-      if (readset_optional.has_value()) {
-          // Careful mode
-          logger.info()
-              << "Careful mode requested. Filtering high multiplicity unique k-mers\n";
-          const std::vector<Contig> &readset = readset_optional.value();
-          BanHighFreqUniqueKmers(contigs, readset, kmer_indexes, logger);
-      }
-      return kmer_indexes;
+    const kmer_filter::KmerFilterBuilder kmer_filter_builder{nthreads, hasher, common_params, kmer_indexer_params};
+    logger.info() << "Creating kmer filter\n";
+    const kmer_filter::KmerFilter kmer_filter = kmer_filter_builder.GetKmerFilter(contigs, logger);
+    logger.info() << "Finished creating kmer filter. Using it to build kmer indexes\n";
+    KmerIndexes kmer_indexes = GetKmerIndexes(contigs, kmer_filter, logger);
+
+    logger.info() << "Filtering high multiplicity unique k-mers\n";
+    BanHighFreqUniqueKmers(contigs, readset, kmer_indexes, logger);
+
+    return kmer_indexes;
   }
 };
 
