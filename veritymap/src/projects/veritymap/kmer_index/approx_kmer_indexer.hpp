@@ -3,7 +3,6 @@
 //
 
 #pragma once
-#include <omp.h>
 
 #include <ctime>
 
@@ -16,14 +15,16 @@
 
 namespace veritymap::kmer_index::approx_kmer_indexer {
 
-template<typename T>
-std::pair<double, double> mean_stdev(std::vector<T> const &v) {
-  double mean = v[0];
+template<typename K, typename V>
+std::pair<double, double> mean_stdev(const std::unordered_map<K, V> &v) {
+  auto it = v.begin();
+  double mean = it->second;
   double variance = 0;
-  for (size_t k = 1; k < v.size(); ++k) {
-    double meanPre = mean;
-    mean += (v[k] - mean) / k;
-    variance += (v[k] - mean) * (v[k] - meanPre);
+  for (int k = 1; it != v.end(); ++it, ++k) {
+    double mean_pre = mean;
+    const V &val = it->second;
+    mean += (val - mean) / k;
+    variance += (val - mean) * (val - mean_pre);
   }
   return {mean, std::sqrt(variance / v.size())};
 }
@@ -158,13 +159,20 @@ class ApproxKmerIndexer {
 
     // ban unique k-mers in assembly that have unusually high coverage
 
-    Counter kmer_cnt;
-    for (auto it = readset.begin(); it != readset.end(); ++it) {
-      logger.trace() << it - readset.begin() << " " << readset.size()
-                     << "\n";
-      const Contig &contig = *it;
+    logger.info() << "Counting unique k-mers from the target...\n";
+    std::unordered_map<Config::HashParams::htype, std::atomic<size_t>> unique_kmers;
+    for (const KmerIndex &index : kmer_indexes) {
+      for (const auto &[hash, pos] : index) {
+        if (pos.size() == 1) {
+          unique_kmers.emplace(hash, 0);
+        }
+      }
+    }
+    logger.info() << "There are " << unique_kmers.size() << " unique k-mers in the target\n";
+
+    std::function<void(const Contig &)> process_read = [&unique_kmers, this](const Contig &contig) {
       if (contig.size() < hasher.k) {
-        continue;
+        return;
       }
       KWH<htype> kwh(hasher, contig.seq, 0);
       while (true) {
@@ -175,34 +183,26 @@ class ApproxKmerIndexer {
         const htype fhash = kwh.get_fhash();
         const htype rhash = kwh.get_rhash();
         for (const htype hash : std::vector<htype>{fhash, rhash}) {
-          bool is_unique = false;
-          for (const KmerIndex &index : kmer_indexes) {
-            auto it = index.find(hash);
-            if (it != index.end() and it->second.size() == 1) {
-              is_unique = true;
-              break;
-            }
-          }
-          if (is_unique) {
-            kmer_cnt[hash] += 1;
+          auto kmer_it = unique_kmers.find(hash);
+          if (kmer_it != unique_kmers.end()) {
+            ++(kmer_it->second);
+            break;
           }
         }
       }
-    }
+    };
+    process_in_parallel(readset, process_read, nthreads, true);
 
-    std::vector<size_t> kmer_cnt_vec;
-    for (auto &[hash, cnt] : kmer_cnt) {
-      kmer_cnt_vec.emplace_back(cnt);
-    }
+    logger.info() << "Finished counting frequences of unique k-mers in the queries...\n";
 
-    auto [mean, stddev] = mean_stdev(kmer_cnt_vec);
+    auto [mean, stddev] = mean_stdev(unique_kmers);
     logger.info() << "Mean (std) multiplicity of a unique k-mer = " << mean << " (" << stddev << ")\n";
 
     const uint max_read_freq = mean + kmer_indexer_params.careful_upper_bnd_cov_mult * stddev;
     logger.info() << "Max solid k-mer frequency in reads " << max_read_freq << "\n";
 
     uint64_t n{0};
-    for (auto &[hash, cnt] : kmer_cnt) {
+    for (auto &[hash, cnt] : unique_kmers) {
       if (cnt > max_read_freq) {
         for (KmerIndex &index : kmer_indexes) {
           auto it = index.find(hash);
