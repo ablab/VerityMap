@@ -13,11 +13,10 @@
 #include "version/version.hpp"
 
 int main(int argc, char** argv) {
-  CLParser parser{{"output-dir=", "target=", "queries=none", "threads=40",
-                   "only-index", "careful", "index=none",
-                   "config=hifi"},
-                  {},
-                  {"o=output-dir", "t=threads"}};
+  CLParser parser{
+      {"output-dir=", "target=", "queries=none", "threads=40", "only-index", "careful", "index=none", "config=hifi"},
+      {},
+      {"o=output-dir", "t=threads"}};
   parser.parseCL(argc, argv);
   if (!parser.check().empty()) {
     std::cerr << "Incorrect parameters" << std::endl;
@@ -48,14 +47,11 @@ int main(int argc, char** argv) {
   logger << "Launch time: " << std::put_time(std::localtime(&now), "%c %Z") << std::endl;
 
   std::stringstream cmd_ss;
-  for (size_t i = 0; i < argc; i++) {
-    cmd_ss << argv[i] << " ";
-  }
+  for (size_t i = 0; i < argc; i++) { cmd_ss << argv[i] << " "; }
   const std::string cmd = cmd_ss.str();
   logger << "CMD: " << cmd << std::endl;
 
-  const std::filesystem::path target_path =
-      std::filesystem::canonical(parser.getValue("target"));
+  const std::filesystem::path target_path = std::filesystem::canonical(parser.getValue("target"));
 
   auto get_path_w_def = [&parser](const std::string& parameter) {
     std::filesystem::path path = parser.getValue(parameter);

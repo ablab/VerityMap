@@ -5,19 +5,12 @@
 
 namespace veritymap::ksw_align {
 
-cigar_utils::Cigar align(const Sequence &tseq, const int t_st, const int t_en,
-                         const Sequence &qseq, const int q_st, const int q_en,
-                         const int8_t match_score,
-                         const int8_t mis_score,
-                         const int8_t gapo,
+cigar_utils::Cigar align(const Sequence &tseq, const int t_st, const int t_en, const Sequence &qseq, const int q_st,
+                         const int q_en, const int8_t match_score, const int8_t mis_score, const int8_t gapo,
                          const int8_t gape) {
   // Based on example at https://github.com/lh3/ksw2
   const int8_t a = match_score, b = mis_score < 0 ? mis_score : -mis_score;// a>0 and b<0
-  const int8_t mat[25]{a, b, b, b, 0,
-                       b, a, b, b, 0,
-                       b, b, a, b, 0,
-                       b, b, b, a, 0,
-                       0, 0, 0, 0, 0};
+  const int8_t mat[25]{a, b, b, b, 0, b, a, b, b, 0, b, b, a, b, 0, b, b, b, a, 0, 0, 0, 0, 0, 0};
   const int32_t tl{t_en - t_st}, ql{q_en - q_st};
   uint8_t *ts, *qs, c[256];
   ksw_extz_t ez;

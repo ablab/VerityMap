@@ -34,8 +34,7 @@ kmer_index::IndexedContigs get_indexed_targets(const std::vector<Contig> &querie
         import_index(targets, hasher, kmer_indexer_params.max_rare_cnt_target, kmer_indexes_is);
     kmer_indexes_is.close();
     logger.info() << "Finished importing kmer index from " << index_path << std::endl;
-    std::filesystem::copy_file(index_path, kmer_indexes_fn,
-                               std::filesystem::copy_options::overwrite_existing);
+    std::filesystem::copy_file(index_path, kmer_indexes_fn, std::filesystem::copy_options::overwrite_existing);
     return indexed_targets;
   }
 
@@ -43,8 +42,7 @@ kmer_index::IndexedContigs get_indexed_targets(const std::vector<Contig> &querie
                                           &index_path, &logger] {
     if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::exact) {
       logger.info() << "Getting exact kmer indexes..." << std::endl;
-      std::vector<KmerIndex> kmers_indexes =
-          get_rare_kmers(targets, hasher, kmer_indexer_params.max_rare_cnt_target);
+      std::vector<KmerIndex> kmers_indexes = get_rare_kmers(targets, hasher, kmer_indexer_params.max_rare_cnt_target);
       logger.info() << "Finished getting exact kmer indexes" << std::endl;
       return kmers_indexes;
     } else {

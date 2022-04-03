@@ -13,9 +13,7 @@ inline std::ostream &operator<<(std::ostream &os, unsigned __int128 val) {
     res.push_back(val % 10);
     val /= 10;
   }
-  for (auto it = res.rbegin(); it != res.rend(); ++it) {
-    os << *it;
-  }
+  for (auto it = res.rbegin(); it != res.rend(); ++it) { os << *it; }
   return os;
 }
 

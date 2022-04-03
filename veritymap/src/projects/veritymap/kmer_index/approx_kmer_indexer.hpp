@@ -43,8 +43,7 @@ class ApproxKmerIndexer {
   };
 
   std::vector<size_t> BinHashesInChunk(std::vector<std::vector<HashPosType>> &hashes_pos,
-                                       const kmer_filter::KmerFilter &kmer_filter,
-                                       KWH<htype> &kwh,
+                                       const kmer_filter::KmerFilter &kmer_filter, KWH<htype> &kwh,
                                        const size_t ctg_ind) const {
     std::vector<size_t> sizes(nthreads, 0);
     auto process_chunk = [this, &hashes_pos, &sizes, &kmer_filter, &ctg_ind](size_t i) {
@@ -52,7 +51,8 @@ class ApproxKmerIndexer {
       const size_t size = sizes[i];
       for (int j = 0; j < size; ++j) {
         const htype fhash = hashes_pos_th[j].fhash;
-        hashes_pos_th[j].kmer_type = kmer_filter.GetKmerType(ctg_ind, fhash, i, kmer_indexer_params.max_rare_cnt_target);
+        hashes_pos_th[j].kmer_type =
+            kmer_filter.GetKmerType(ctg_ind, fhash, i, kmer_indexer_params.max_rare_cnt_target);
       }
     };
 
@@ -75,70 +75,60 @@ class ApproxKmerIndexer {
       kwh = kwh.next();
     }
     std::vector<std::thread> threads(nthreads);
-    for (size_t i = 0; i < threads.size(); ++i) {
-      threads[i] = std::thread(process_chunk, i);
-    }
-    for (auto &thread : threads) {
-      thread.join();
-    }
+    for (size_t i = 0; i < threads.size(); ++i) { threads[i] = std::thread(process_chunk, i); }
+    for (auto &thread : threads) { thread.join(); }
 
     return sizes;
   }
 
-  [[nodiscard]] KmerIndex GetKmerIndex(const Contig &contig,
-                                       const kmer_filter::KmerFilter &kmer_filter,
-                                       const size_t ctg_ind,
-                                       logging::Logger &logger) const {
-      if (contig.size() < hasher.k) {
-          return {};
+  [[nodiscard]] KmerIndex GetKmerIndex(const Contig &contig, const kmer_filter::KmerFilter &kmer_filter,
+                                       const size_t ctg_ind, logging::Logger &logger) const {
+    if (contig.size() < hasher.k) {
+      return {};
+    }
+
+    std::vector<std::vector<HashPosType>> hashes_pos(nthreads);
+
+    KmerIndex kmer_index;
+    KWH<htype> kwh({hasher, contig.seq, 0});
+    const size_t window_size = kmer_indexer_params.k_window_size;
+    const size_t step_size = kmer_indexer_params.k_step_size;
+    std::vector<std::tuple<size_t, htype, bool>> pos_hash_uniq;
+    kmer_window::KmerWindow kmer_window(window_size, pos_hash_uniq);
+    while (true) {
+      logger.info() << "Pos = " << kwh.pos << "\n";
+      logger.info() << "Running jobs for chunk \n";
+      std::vector<size_t> sizes = BinHashesInChunk(hashes_pos, kmer_filter, kwh, ctg_ind);
+
+      logger.info() << "Preparing kmer positions for sort \n";
+      for (size_t ithread = 0; ithread < nthreads; ++ithread) {
+        const auto &hashes_pos_th = hashes_pos[ithread];
+        for (size_t j = 0; j < sizes[ithread]; ++j) {
+          const auto &hash_pos = hashes_pos_th[j];
+          if (hash_pos.kmer_type == kmer_filter::KmerType::unique
+              or hash_pos.kmer_type == kmer_filter::KmerType::rare) {
+            const bool is_unique = hash_pos.kmer_type == kmer_filter::KmerType::unique;
+            pos_hash_uniq.emplace_back(hash_pos.pos, hash_pos.fhash, is_unique);
+          }
+        }
       }
 
-      std::vector<std::vector<HashPosType>> hashes_pos(nthreads);
+      logger.info() << "Sorting kmer positions \n";
+      std::sort(pos_hash_uniq.begin(), pos_hash_uniq.end());
 
-      KmerIndex kmer_index;
-      KWH<htype> kwh({hasher, contig.seq, 0});
-      const size_t window_size = kmer_indexer_params.k_window_size;
-      const size_t step_size = kmer_indexer_params.k_step_size;
-      std::vector<std::tuple<size_t, htype, bool>> pos_hash_uniq;
-      kmer_window::KmerWindow kmer_window(window_size, pos_hash_uniq);
-      while (true) {
-          logger.info() << "Pos = " << kwh.pos << "\n";
-          logger.info() << "Running jobs for chunk \n";
-          std::vector<size_t>
-              sizes = BinHashesInChunk(hashes_pos, kmer_filter, kwh, ctg_ind);
-
-          logger.info() << "Preparing kmer positions for sort \n";
-          for (size_t ithread = 0; ithread < nthreads; ++ithread) {
-              const auto &hashes_pos_th = hashes_pos[ithread];
-              for (size_t j = 0; j < sizes[ithread]; ++j) {
-                  const auto &hash_pos = hashes_pos_th[j];
-          if (hash_pos.kmer_type == kmer_filter::KmerType::unique or hash_pos.kmer_type == kmer_filter::KmerType::rare) {
-              const bool
-                  is_unique = hash_pos.kmer_type==kmer_filter::KmerType::unique;
-              pos_hash_uniq
-                  .emplace_back(hash_pos.pos, hash_pos.fhash, is_unique);
-          }
-              }
-          }
-
-          logger.info() << "Sorting kmer positions \n";
-          std::sort(pos_hash_uniq.begin(), pos_hash_uniq.end());
-
-          logger.info() << "Extending kmer index \n";
-          kmer_window.Reset();
-          for (auto it = pos_hash_uniq.begin(); it!=pos_hash_uniq.end(); ++it) {
-              const auto[pos, hash, is_unique] = *it;
-              kmer_window.Inc();
-              if (kwh.hasNext() and kwh.pos - pos < window_size/2) {
-                  pos_hash_uniq = {it, pos_hash_uniq.end()};
-                  break;
-              }
-              if ((kmer_window.UniqueFrac()
-                  < kmer_indexer_params.window_unique_density)
-                  or (pos%step_size==0)) {
-                  kmer_index[hash].emplace_back(pos);
-              }
-          }
+      logger.info() << "Extending kmer index \n";
+      kmer_window.Reset();
+      for (auto it = pos_hash_uniq.begin(); it != pos_hash_uniq.end(); ++it) {
+        const auto [pos, hash, is_unique] = *it;
+        kmer_window.Inc();
+        if (kwh.hasNext() and kwh.pos - pos < window_size / 2) {
+          pos_hash_uniq = {it, pos_hash_uniq.end()};
+          break;
+        }
+        if ((kmer_window.UniqueFrac() < kmer_indexer_params.window_unique_density) or (pos % step_size == 0)) {
+          kmer_index[hash].emplace_back(pos);
+        }
+      }
 
       logger.info() << "Finished working with the chunk \n";
       if (not kwh.hasNext()) {
@@ -149,24 +139,18 @@ class ApproxKmerIndexer {
   }
 
   [[nodiscard]] KmerIndexes GetKmerIndexes(const std::vector<Contig> &contigs,
-                                           const kmer_filter::KmerFilter &kmer_filter,
-                                           logging::Logger &logger) const {
+                                           const kmer_filter::KmerFilter &kmer_filter, logging::Logger &logger) const {
     KmerIndexes kmer_indexes;
     for (auto it = contigs.cbegin(); it != contigs.cend(); ++it) {
       const Contig &contig{*it};
       logger.info() << "Creating index for contig " << contig.id << "\n";
-      kmer_indexes.emplace_back(GetKmerIndex(contig,
-                                             kmer_filter,
-                                             it - contigs.cbegin(),
-                                             logger));
+      kmer_indexes.emplace_back(GetKmerIndex(contig, kmer_filter, it - contigs.cbegin(), logger));
     }
     return kmer_indexes;
   }
 
-  void BanHighFreqUniqueKmers(const std::vector<Contig> &contigs,
-                              const std::vector<Contig> &readset,
-                              KmerIndexes &kmer_indexes,
-                              logging::Logger &logger) const {
+  void BanHighFreqUniqueKmers(const std::vector<Contig> &contigs, const std::vector<Contig> &readset,
+                              KmerIndexes &kmer_indexes, logging::Logger &logger) const {
 
     // ban unique k-mers in assembly that have unusually high coverage
 
@@ -229,15 +213,12 @@ class ApproxKmerIndexer {
   }
 
  public:
-  ApproxKmerIndexer(const size_t nthreads,
-                    const RollingHash<htype> &hasher,
-                    const Config::CommonParams &common_params,
+  ApproxKmerIndexer(const size_t nthreads, const RollingHash<htype> &hasher, const Config::CommonParams &common_params,
                     const Config::KmerIndexerParams &kmer_indexer_params)
       : nthreads{nthreads},
         hasher{hasher},
         common_params{common_params},
-        kmer_indexer_params{
-            kmer_indexer_params} {}
+        kmer_indexer_params{kmer_indexer_params} {}
 
   ApproxKmerIndexer(const ApproxKmerIndexer &) = delete;
   ApproxKmerIndexer(ApproxKmerIndexer &&) = delete;

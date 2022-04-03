@@ -10,8 +10,7 @@
 namespace veritymap::kmer_index::filter_rep_kmers {
 
 template<typename htype>
-BloomFilter get_bloom_rep_kmers(const Sequence& sequence,
-                                const RollingHash<htype>& hasher,
+BloomFilter get_bloom_rep_kmers(const Sequence& sequence, const RollingHash<htype>& hasher,
                                 const double false_positive_probability) {
   if (sequence.size() < hasher.k) {
     return {};

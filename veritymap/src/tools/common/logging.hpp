@@ -37,14 +37,13 @@ class TimeSpace {
   timespec start{};
 
  public:
-  TimeSpace() {
-    clock_gettime(CLOCK_MONOTONIC, &start);
-  }
+  TimeSpace() { clock_gettime(CLOCK_MONOTONIC, &start); }
 
   std::string get() const {
     timespec finish{};
     clock_gettime(CLOCK_MONOTONIC, &finish);
-    auto worktime = size_t(double(finish.tv_sec - start.tv_sec) + double(finish.tv_nsec - start.tv_nsec) / 1000000000.0);
+    auto worktime =
+        size_t(double(finish.tv_sec - start.tv_sec) + double(finish.tv_nsec - start.tv_nsec) / 1000000000.0);
 
 #if __linux__ || __unix__
     struct sysinfo memInfo;
@@ -72,7 +71,8 @@ class TimeSpace {
       t = "Gb";
     }
     std::stringstream ss;
-    ss << itos(worktime / 60 / 60) << ":" << itos(worktime / 60 % 60) << ":" << itos(worktime % 60) << " " << mem << t << " ";
+    ss << itos(worktime / 60 / 60) << ":" << itos(worktime / 60 % 60) << ":" << itos(worktime % 60) << " " << mem << t
+       << " ";
     return ss.str();
   }
 };
@@ -84,10 +84,10 @@ class LoggerStorage {
   const std::filesystem::path backupDir;
 
  public:
-  explicit LoggerStorage(std::filesystem::path _dir, const std::string &_programName) : dir(std::move(_dir)),
-                                                                                        logFile(dir / (_programName + ".log")),
-                                                                                        backupDir(dir / "old_logs") {
-  }
+  explicit LoggerStorage(std::filesystem::path _dir, const std::string &_programName)
+      : dir(std::move(_dir)),
+        logFile(dir / (_programName + ".log")),
+        backupDir(dir / "old_logs") {}
 
   std::filesystem::path backup() const {
     if (!std::filesystem::is_regular_file(logFile)) {
@@ -101,8 +101,7 @@ class LoggerStorage {
         continue;
       try {
         max = std::max<size_t>(max, std::stoi(fname.substr(0, fname.size() - 4)));
-      } catch (const std::invalid_argument &ia) {
-      }
+      } catch (const std::invalid_argument &ia) {}
     }
     std::filesystem::path backup = backupDir / (itos(max + 1) + ".log");
     std::filesystem::copy_file(logFile, backup);
@@ -125,10 +124,10 @@ class Logger : public std::streambuf, public std::ostream {
   bool debug;
 
  public:
-  explicit Logger(bool _add_cout = true, bool _debug = false) : std::ostream(this),
-                                                                add_cout(_add_cout),
-                                                                debug(_debug) {
-  }
+  explicit Logger(bool _add_cout = true, bool _debug = false)
+      : std::ostream(this),
+        add_cout(_add_cout),
+        debug(_debug) {}
 
   Logger(const Logger &) = delete;
 
@@ -148,9 +147,7 @@ class Logger : public std::streambuf, public std::ostream {
 
   int overflow(int c) override {
     std::cout.put(c);
-    for (std::ofstream *os : oss) {
-      os->put(c);
-    }
+    for (std::ofstream *os : oss) { os->put(c); }
     return 0;
   }
 

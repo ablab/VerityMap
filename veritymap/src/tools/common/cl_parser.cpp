@@ -43,9 +43,7 @@ void CLParser::parseCL(const std::vector<std::string> &args) {
   }
 }
 
-void CLParser::parseCL(int argc, char **argv) {
-  parseCL(oneline::initialize<std::string, char *>(argv, argv + argc));
-}
+void CLParser::parseCL(int argc, char **argv) { parseCL(oneline::initialize<std::string, char *>(argv, argv + argc)); }
 
 const std::string &CLParser::getValue(const std::string &s) const {
   auto it = values.find(s);
@@ -61,13 +59,13 @@ const std::string &CLParser::getValue(const std::string &s) const {
   }
 }
 
-bool CLParser::getCheck(const std::string &s) const {
-  return checks.find(s)->second;
-}
+bool CLParser::getCheck(const std::string &s) const { return checks.find(s)->second; }
 
-CLParser::CLParser(std::vector<std::string> _long_params, std::vector<std::string> _list_params, std::vector<std::string> _short_params) : long_params(std::move(_long_params)),
-                                                                                                                                           list_params(std::move(_list_params)),
-                                                                                                                                           short_params(std::move(_short_params)) {
+CLParser::CLParser(std::vector<std::string> _long_params, std::vector<std::string> _list_params,
+                   std::vector<std::string> _short_params)
+    : long_params(std::move(_long_params)),
+      list_params(std::move(_list_params)),
+      short_params(std::move(_short_params)) {
   for (const std::string &s : long_params) {
     size_t pos = s.find('=');
     if (pos != -1) {
@@ -84,7 +82,5 @@ CLParser::CLParser(std::vector<std::string> _long_params, std::vector<std::strin
       values[s] = ",";
     }
   }
-  for (const std::string &s : short_params) {
-    short_to_long[s[0]] = s.substr(2, s.size() - 2);
-  }
+  for (const std::string &s : short_params) { short_to_long[s[0]] = s.substr(2, s.size() - 2); }
 }
