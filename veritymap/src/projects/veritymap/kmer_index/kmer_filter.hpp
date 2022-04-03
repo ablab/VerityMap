@@ -10,10 +10,7 @@
 
 namespace veritymap::kmer_index::kmer_filter {
 
-enum class KmerType { unique,
-                      rare,
-                      frequent,
-                      banned };
+enum class KmerType { unique, rare, frequent, banned };
 
 class KmerFilter {
   std::vector<BloomFilter> once_filters;
@@ -24,9 +21,9 @@ class KmerFilter {
   friend class KmerFilterBuilder;
 
  public:
-  KmerFilter(std::vector<BloomFilter> once_filters,
-             std::vector<BloomFilter> ban_filters) : once_filters{std::move(once_filters)},
-                                                     ban_filters{std::move(ban_filters)} {
+  KmerFilter(std::vector<BloomFilter> once_filters, std::vector<BloomFilter> ban_filters)
+      : once_filters{std::move(once_filters)},
+        ban_filters{std::move(ban_filters)} {
     VERIFY(once_filters.size() == ban_filters.size());
     if (not cmss.empty()) {
       VERIFY(ban_filters.size() == cmss.front().size());
@@ -69,9 +66,7 @@ class KmerFilterBuilder {
 
   [[nodiscard]] KmerFilter InitKmerFilter(const std::vector<Contig> &contigs) const {
     uint64_t tot_len{0};
-    for (const Contig &contig : contigs) {
-      tot_len += contig.size();
-    }
+    for (const Contig &contig : contigs) { tot_len += contig.size(); }
     const BloomParameters kBloomParameters = GetBloomParams(tot_len);
     std::vector<BloomFilter> once_filters;
     (nthreads, BloomFilter(kBloomParameters));
@@ -85,14 +80,10 @@ class KmerFilterBuilder {
     return {std::move(once_filters), std::move(ban_filters)};
   }
 
-  void AddContigToFilter(KmerFilter &kmer_filter,
-                         const Contig &contig,
-                         logging::Logger &logger) const {
+  void AddContigToFilter(KmerFilter &kmer_filter, const Contig &contig, logging::Logger &logger) const {
     const cms_utils::CMSParams kCmsParams(common_params, kmer_indexer_params, contig.size(), nthreads);
     std::vector<sketch::cm::ccm_t> cms;
-    for (size_t i = 0; i < nthreads; ++i) {
-      cms.emplace_back(kCmsParams.nbits, kCmsParams.l2sz, kCmsParams.nhash);
-    }
+    for (size_t i = 0; i < nthreads; ++i) { cms.emplace_back(kCmsParams.nbits, kCmsParams.l2sz, kCmsParams.nhash); }
     kmer_filter.cmss.emplace_back(std::move(cms));
 
     if (contig.size() < common_params.k) {
@@ -145,12 +136,8 @@ class KmerFilterBuilder {
       }
       logger.info() << "Parallel run for chunk\n";
       std::vector<std::thread> threads(nthreads);
-      for (size_t i = 0; i < threads.size(); ++i) {
-        threads[i] = std::thread(process_chunk, i);
-      }
-      for (auto &thread : threads) {
-        thread.join();
-      }
+      for (size_t i = 0; i < threads.size(); ++i) { threads[i] = std::thread(process_chunk, i); }
+      for (auto &thread : threads) { thread.join(); }
 
       if (not kwh.hasNext()) {
         break;
@@ -161,13 +148,12 @@ class KmerFilterBuilder {
   }
 
  public:
-  KmerFilterBuilder(size_t nthreads,
-                    const RollingHash<htype> &hasher,
-                    const Config::CommonParams &common_params,
-                    const Config::KmerIndexerParams &kmer_indexer_params) : nthreads(nthreads),
-                                                                            hasher(hasher),
-                                                                            common_params(common_params),
-                                                                            kmer_indexer_params(kmer_indexer_params) {}
+  KmerFilterBuilder(size_t nthreads, const RollingHash<htype> &hasher, const Config::CommonParams &common_params,
+                    const Config::KmerIndexerParams &kmer_indexer_params)
+      : nthreads(nthreads),
+        hasher(hasher),
+        common_params(common_params),
+        kmer_indexer_params(kmer_indexer_params) {}
 
   KmerFilterBuilder(const KmerFilterBuilder &) = delete;
   KmerFilterBuilder(KmerFilterBuilder &&) = delete;

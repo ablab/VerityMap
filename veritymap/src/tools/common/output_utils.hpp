@@ -26,8 +26,6 @@ std::ostream& operator<<(std::ostream& out, const std::vector<T>& tree) {
     return out << "[]" << std::endl;
   }
   out << "[";
-  for (size_t i = 0; i + 1 < tree.size(); i += 1) {
-    out << tree[i] << ", ";
-  }
+  for (size_t i = 0; i + 1 < tree.size(); i += 1) { out << tree[i] << ", "; }
   return out << tree[tree.size() - 1] << "]";
 }

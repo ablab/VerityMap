@@ -9,18 +9,14 @@
  * @param char c
  * @return true if c is 0, 1, 2 or 3.
  */
-inline bool is_dignucl(char c) {
-  return (c < 4);
-}
+inline bool is_dignucl(char c) { return (c < 4); }
 
 /**
  * 0123 -> 3210
  * @param char c
  * @return c ^ 3
  */
-inline char complement(char c) {
-  return char(c ^ 3u);
-}
+inline char complement(char c) { return char(c ^ 3u); }
 
 static const char INVALID_NUCL = char(-1);
 
@@ -44,10 +40,8 @@ inline bool is_nucl(char c) {
     case 'G':
     case 3:
     case 't':
-    case 'T':
-      return true;
-    default:
-      return false;
+    case 'T': return true;
+    default: return false;
   }
 }
 
@@ -58,34 +52,21 @@ inline bool is_nucl(char c) {
  */
 inline char nucl_complement(char c) {
   switch (c) {
-    case 0:
-      return 3;
+    case 0: return 3;
     case 'a':
-    case 'n':
-      return 't';
+    case 'n': return 't';
     case 'A':
-    case 'N':
-      return 'T';
-    case 1:
-      return 2;
-    case 'c':
-      return 'g';
-    case 'C':
-      return 'G';
-    case 2:
-      return 1;
-    case 'g':
-      return 'c';
-    case 'G':
-      return 'C';
-    case 3:
-      return 0;
-    case 't':
-      return 'a';
-    case 'T':
-      return 'A';
-    default:
-      return INVALID_NUCL;
+    case 'N': return 'T';
+    case 1: return 2;
+    case 'c': return 'g';
+    case 'C': return 'G';
+    case 2: return 1;
+    case 'g': return 'c';
+    case 'G': return 'C';
+    case 3: return 0;
+    case 't': return 'a';
+    case 'T': return 'A';
+    default: return INVALID_NUCL;
   }
 }
 
@@ -100,22 +81,17 @@ inline char nucl(char c) {
     case 'a':
     case 'A':
     case 'n':
-    case 'N':
-      return 'A';
+    case 'N': return 'A';
     case 1:
     case 'c':
-    case 'C':
-      return 'C';
+    case 'C': return 'C';
     case 2:
     case 'g':
-    case 'G':
-      return 'G';
+    case 'G': return 'G';
     case 3:
     case 't':
-    case 'T':
-      return 'T';
-    default:
-      return INVALID_NUCL;
+    case 'T': return 'T';
+    default: return INVALID_NUCL;
   }
 }
 
@@ -130,21 +106,16 @@ inline char dignucl(char c) {
     case 'a':
     case 'A':
     case 'n':
-    case 'N':
-      return 0;
+    case 'N': return 0;
     case 1:
     case 'c':
-    case 'C':
-      return 1;
+    case 'C': return 1;
     case 2:
     case 'g':
-    case 'G':
-      return 2;
+    case 'G': return 2;
     case 3:
     case 't':
-    case 'T':
-      return 3;
-    default:
-      return INVALID_NUCL;
+    case 'T': return 3;
+    default: return INVALID_NUCL;
   }
 }

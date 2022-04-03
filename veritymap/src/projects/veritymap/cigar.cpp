@@ -29,9 +29,7 @@ Cigar::Cigar(const ksw_extz_t& ez) {
   }
 }
 
-const std::vector<CigarFragment>& Cigar::get_cigar_vec() const {
-  return cigar_vec;
-}
+const std::vector<CigarFragment>& Cigar::get_cigar_vec() const { return cigar_vec; }
 
 void Cigar::extend(const size_t length, const CigarMode mode) {
   if (empty() or cigar_vec.back().mode != mode) {
@@ -46,8 +44,7 @@ void Cigar::extend(Cigar cigar) {
     cigar.cigar_vec.front().length += cigar_vec.back().length;
     cigar_vec.pop_back();
   }
-  cigar_vec.insert(cigar_vec.end(),
-                   std::make_move_iterator(cigar.cigar_vec.begin()),
+  cigar_vec.insert(cigar_vec.end(), std::make_move_iterator(cigar.cigar_vec.begin()),
                    std::make_move_iterator(cigar.cigar_vec.end()));
 }
 
@@ -84,7 +81,9 @@ void Cigar::extend(Cigar cigar) {
     } else {
       VERIFY(fragment.mode == CigarMode::M);
       for (size_t i = 0; i < fragment.length; ++i) {
-        if (target[t] != query[q]) { ++nmism; }
+        if (target[t] != query[q]) {
+          ++nmism;
+        }
         ++t, ++q;
       }
     }
@@ -94,9 +93,7 @@ void Cigar::extend(Cigar cigar) {
 
 int Cigar::alignment_length() const {
   int length{0};
-  for (const CigarFragment& fragment : cigar_vec) {
-    length += fragment.length;
-  }
+  for (const CigarFragment& fragment : cigar_vec) { length += fragment.length; }
   return length;
 }
 

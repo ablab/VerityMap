@@ -13,10 +13,7 @@
 
 namespace veritymap::cigar_utils {
 
-enum class CigarMode { M,
-                       I,
-                       D,
-                       S };
+enum class CigarMode { M, I, D, S };
 
 inline char cigar_mode2str(const CigarMode &fragment);
 
@@ -60,13 +57,17 @@ class Cigar {
   std::pair<size_t, size_t> trim(const CigarMode &mode) {
     size_t left_trim = {0}, right_trim{0};
 
-    if (cigar_vec.empty()) { return {left_trim, right_trim}; }
+    if (cigar_vec.empty()) {
+      return {left_trim, right_trim};
+    }
     if (cigar_vec.front().mode == mode) {
       left_trim = cigar_vec.front().length;
       cigar_vec.erase(cigar_vec.begin());
     }
 
-    if (cigar_vec.empty()) { return {left_trim, right_trim}; }
+    if (cigar_vec.empty()) {
+      return {left_trim, right_trim};
+    }
     if (cigar_vec.back().mode == mode) {
       right_trim = cigar_vec.back().length;
       cigar_vec.pop_back();
@@ -75,9 +76,15 @@ class Cigar {
   }
 
   void soft_clip() {
-    if (cigar_vec.empty()) { return; }
-    if (cigar_vec.front().mode == CigarMode::I) { cigar_vec.front().mode = CigarMode::S; }
-    if (cigar_vec.back().mode == CigarMode::I) { cigar_vec.back().mode = CigarMode::S; }
+    if (cigar_vec.empty()) {
+      return;
+    }
+    if (cigar_vec.front().mode == CigarMode::I) {
+      cigar_vec.front().mode = CigarMode::S;
+    }
+    if (cigar_vec.back().mode == CigarMode::I) {
+      cigar_vec.back().mode = CigarMode::S;
+    }
   }
 };
 

@@ -22,7 +22,8 @@ class CLParser {
   std::string command_line;
 
  public:
-  CLParser(std::vector<std::string> _long_params, std::vector<std::string> _list_params, std::vector<std::string> _short_params);
+  CLParser(std::vector<std::string> _long_params, std::vector<std::string> _list_params,
+           std::vector<std::string> _short_params);
 
   //    TODO: check what happens with quotes
   //    TODO: make failsafe
@@ -41,25 +42,15 @@ class CLParser {
 
   const std::string &getValue(const std::string &s) const;
 
-  std::vector<std::string> getListValue(const std::string &s) const {
-    return split(getValue(s), ",");
-  }
+  std::vector<std::string> getListValue(const std::string &s) const { return split(getValue(s), ","); }
 
   bool getCheck(const std::string &s) const;
 
-  const std::vector<std::string> &getStart() const {
-    return start;
-  }
+  const std::vector<std::string> &getStart() const { return start; }
 
-  const std::vector<std::string> &getExtra() const {
-    return extra;
-  }
+  const std::vector<std::string> &getExtra() const { return extra; }
 
-  const std::vector<std::string> &getErrors() const {
-    return errors;
-  }
+  const std::vector<std::string> &getErrors() const { return errors; }
 
-  const std::string &getCL() const {
-    return command_line;
-  }
+  const std::string &getCL() const { return command_line; }
 };

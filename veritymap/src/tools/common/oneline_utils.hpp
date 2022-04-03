@@ -14,7 +14,10 @@ std::vector<V> map(I begin, I end, std::function<V(const U &)> f) {
 template<class V, class I>
 std::vector<V> filter(I begin, I end, std::function<bool(V &)> f) {
   std::vector<V> result;
-  std::for_each(begin, end, [&](V &param) {if(f(param)) result.emplace_back(std::move(param)); });
+  std::for_each(begin, end, [&](V &param) {
+    if (f(param))
+      result.emplace_back(std::move(param));
+  });
   return std::move(result);
 }
 

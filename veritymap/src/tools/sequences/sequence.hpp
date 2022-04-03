@@ -38,8 +38,7 @@ class Sequence {
 
   class ManagedNuclBuffer final : public llvm::ThreadSafeRefCountedBase<ManagedNuclBuffer> {
    public:
-    explicit ManagedNuclBuffer(size_t nucls) : _data(new ST[Sequence::DataSize(nucls)]) {
-    }
+    explicit ManagedNuclBuffer(size_t nucls) : _data(new ST[Sequence::DataSize(nucls)]) {}
 
     ManagedNuclBuffer(size_t nucls, ST *buf) : _data(new ST[Sequence::DataSize(nucls)]) {
       std::uninitialized_copy(buf, buf + Sequence::DataSize(nucls), data());
@@ -53,9 +52,7 @@ class Sequence {
 
     ST *data() { return _data; }
 
-    ~ManagedNuclBuffer() {
-      delete[] _data;
-    }
+    ~ManagedNuclBuffer() { delete[] _data; }
   };
 
   size_t from_;
@@ -63,9 +60,7 @@ class Sequence {
   bool rtl_;// Right to left + complimentary (?)
   llvm::IntrusiveRefCntPtr<ManagedNuclBuffer> data_;
 
-  static size_t DataSize(size_t size) {
-    return (size + STN - 1) >> STNBits;
-  }
+  static size_t DataSize(size_t size) { return (size + STN - 1) >> STNBits; }
 
   template<typename S>
   void InitFromNucls(const S &s, bool rc = false) {
@@ -118,15 +113,10 @@ class Sequence {
     if (cnt != 0)
       bytes[cur++] = data;
 
-    for (; cur < bytes_size; ++cur)
-      bytes[cur] = 0;
+    for (; cur < bytes_size; ++cur) bytes[cur] = 0;
   }
 
-  Sequence(size_t size, int)
-      : from_(0),
-        size_(size),
-        rtl_(false),
-        data_(new ManagedNuclBuffer(size_)) {}
+  Sequence(size_t size, int) : from_(0), size_(size), rtl_(false), data_(new ManagedNuclBuffer(size_)) {}
 
   //Low level constructor. Handle with care.
   Sequence(const Sequence &seq, size_t from, size_t size, bool rtl)
@@ -141,39 +131,21 @@ class Sequence {
      *
      * @param s ACGT or 0123-string
      */
-  explicit Sequence(const char *s, bool rc = false)
-      : Sequence(strlen(s), 0) {
-    InitFromNucls(s, rc);
-  }
+  explicit Sequence(const char *s, bool rc = false) : Sequence(strlen(s), 0) { InitFromNucls(s, rc); }
 
-  explicit Sequence(const std::string &s, bool rc = false)
-      : Sequence(s.size(), 0) {
-    InitFromNucls(s, rc);
-  }
+  explicit Sequence(const std::string &s, bool rc = false) : Sequence(s.size(), 0) { InitFromNucls(s, rc); }
 
-  explicit Sequence(const std::vector<char> &s, bool rc = false)
-      : Sequence(s.size(), 0) {
-    InitFromNucls(s, rc);
-  }
+  explicit Sequence(const std::vector<char> &s, bool rc = false) : Sequence(s.size(), 0) { InitFromNucls(s, rc); }
 
-  explicit Sequence(char *s, bool rc = false)
-      : Sequence(strlen(s), 0) {
-    InitFromNucls(s, rc);
-  }
+  explicit Sequence(char *s, bool rc = false) : Sequence(strlen(s), 0) { InitFromNucls(s, rc); }
 
-  Sequence()
-      : Sequence(size_t(0), 0) {
-    memset(data_->data(), 0, DataSize(size_));
-  }
+  Sequence() : Sequence(size_t(0), 0) { memset(data_->data(), 0, DataSize(size_)); }
 
-  Sequence(const Sequence &s)
-      : Sequence(s, s.from_, s.size_, s.rtl_) {}
+  Sequence(const Sequence &s) : Sequence(s, s.from_, s.size_, s.rtl_) {}
 
   static Sequence Concat(const std::vector<Sequence> &v) {
     std::stringstream ss;
-    for (const auto &seq : v) {
-      ss << seq.str();
-    }
+    for (const auto &seq : v) { ss << seq.str(); }
     return Sequence(ss.str());
   }
 
@@ -189,9 +161,7 @@ class Sequence {
     return *this;
   }
 
-  Sequence copy() const {
-    return Sequence(str());
-  }
+  Sequence copy() const { return Sequence(str()); }
 
   unsigned char operator[](const size_t index) const {
     VERIFY(index < size_);
@@ -246,13 +216,9 @@ class Sequence {
     return false;
   }
 
-  bool operator<=(const Sequence &other) const {
-    return !(other < *this);
-  }
+  bool operator<=(const Sequence &other) const { return !(other < *this); }
 
-  bool operator!=(const Sequence &that) const {
-    return !(operator==(that));
-  }
+  bool operator!=(const Sequence &that) const { return !(operator==(that)); }
 
   /**
      * @param from inclusive
@@ -272,13 +238,9 @@ class Sequence {
 
   inline std::string err() const;
 
-  size_t size() const {
-    return size_;
-  }
+  size_t size() const { return size_; }
 
-  bool empty() const {
-    return size() == 0;
-  }
+  bool empty() const { return size() == 0; }
 
   bool startsWith(const Sequence &other) const {
     return (other.size() <= size()) && (Subseq(0, other.size()) == other);
@@ -299,20 +261,15 @@ class Sequence {
     return true;
   }
 
-  Sequence operator!() const {
-    return Sequence(*this, from_, size_, !rtl_);
-  }
+  Sequence operator!() const { return Sequence(*this, from_, size_, !rtl_); }
 
   size_t commonPrefix(const Sequence &other) const {
     size_t res = 0;
-    while (res < size() && res < other.size() && this->operator[](res) == other[res])
-      res += 1;
+    while (res < size() && res < other.size() && this->operator[](res) == other[res]) res += 1;
     return res;
   }
 
-  Sequence makeSequence() {
-    return *this;
-  }
+  Sequence makeSequence() { return *this; }
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Sequence &s);
@@ -334,23 +291,18 @@ Sequence Sequence::Subseq(size_t from, size_t to) const {
 }
 
 //including from, excluding to
-Sequence Sequence::Subseq(size_t from) const {
-  return Subseq(from, size_);
-}
+Sequence Sequence::Subseq(size_t from) const { return Subseq(from, size_); }
 
-Sequence Sequence::Prefix(size_t count) const {
-  return Subseq(0, count);
-}
+Sequence Sequence::Prefix(size_t count) const { return Subseq(0, count); }
 
-Sequence Sequence::Suffix(size_t count) const {
-  return Subseq(size_ - count);
-}
+Sequence Sequence::Suffix(size_t count) const { return Subseq(size_ - count); }
 
 /**
  * @todo optimize sequence copy
  */
 Sequence Sequence::operator+(const Sequence &s) const {
-  if (data_ == s.data_ && rtl_ == s.rtl_ && ((!rtl_ && this->from_ + size_ == s.from_) || (rtl_ && this->from_ == s.from_ + s.size_))) {
+  if (data_ == s.data_ && rtl_ == s.rtl_
+      && ((!rtl_ && this->from_ + size_ == s.from_) || (rtl_ && this->from_ == s.from_ + s.size_))) {
     return Sequence(*this, std::min(from_, s.from_), size_ + s.size_, rtl_);
   } else {
     return Sequence(str() + s.str());
@@ -360,9 +312,7 @@ Sequence Sequence::operator+(const Sequence &s) const {
 std::string Sequence::str() const {
   VERIFY(size_ < 1000000000000ull);
   std::string res(size_, '-');
-  for (size_t i = 0; i < size_; ++i) {
-    res[i] = nucl(this->operator[](i));
-  }
+  for (size_t i = 0; i < size_; ++i) { res[i] = nucl(this->operator[](i)); }
   return res;
 }
 
@@ -383,9 +333,7 @@ class SequenceBuilder {
  public:
   template<typename S>
   SequenceBuilder &append(const S &s) {
-    for (size_t i = 0; i < s.size(); ++i) {
-      buf_.push_back(s[i]);
-    }
+    for (size_t i = 0; i < s.size(); ++i) { buf_.push_back(s[i]); }
     return *this;
   }
 
@@ -403,27 +351,17 @@ class SequenceBuilder {
     return *this;
   }
 
-  Sequence BuildSequence() {
-    return Sequence(buf_);
-  }
+  Sequence BuildSequence() { return Sequence(buf_); }
 
-  size_t size() const {
-    return buf_.size();
-  }
+  size_t size() const { return buf_.size(); }
 
-  void clear() {
-    return buf_.clear();
-  }
+  void clear() { return buf_.clear(); }
 
-  unsigned char operator[](const size_t index) const {
-    return buf_[index];
-  }
+  unsigned char operator[](const size_t index) const { return buf_[index]; }
 
   std::string str() const {
     std::string s(buf_.size(), '-');
-    for (size_t i = 0; i < s.size(); ++i) {
-      s[i] = nucl(buf_[i]);
-    }
+    for (size_t i = 0; i < s.size(); ++i) { s[i] = nucl(buf_[i]); }
     return s;
   }
 };

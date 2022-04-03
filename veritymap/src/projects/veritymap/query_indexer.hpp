@@ -15,22 +15,18 @@
 
 namespace veritymap::kmer_index {
 
-kmer_index::IndexedContigs
-get_indexed_queries(const std::vector<Contig>& queries,
-                    const std::filesystem::path& outdir,
-                    const RollingHash<Config::HashParams::htype>& hasher,
-                    const size_t nthreads,
-                    logging::Logger& logger,
-                    const std::filesystem::path& index_path,
-                    const Config::CommonParams& common_params,
-                    const Config::KmerIndexerParams& kmer_indexer_params) {
+kmer_index::IndexedContigs get_indexed_queries(const std::vector<Contig>& queries, const std::filesystem::path& outdir,
+                                               const RollingHash<Config::HashParams::htype>& hasher,
+                                               const size_t nthreads, logging::Logger& logger,
+                                               const std::filesystem::path& index_path,
+                                               const Config::CommonParams& common_params,
+                                               const Config::KmerIndexerParams& kmer_indexer_params) {
   using htype = Config::HashParams::htype;
-  const std::vector<KmerIndex> kmers_indexes = [&queries, &hasher, &common_params, &kmer_indexer_params,
-                                                &index_path, &logger] {
+  const std::vector<KmerIndex> kmers_indexes = [&queries, &hasher, &common_params, &kmer_indexer_params, &index_path,
+                                                &logger] {
     if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::exact) {
       logger.info() << "Getting exact kmer indexes..." << std::endl;
-      std::vector<KmerIndex> kmers_indexes =
-          get_rare_kmers(queries, hasher, kmer_indexer_params.max_rare_cnt_target);
+      std::vector<KmerIndex> kmers_indexes = get_rare_kmers(queries, hasher, kmer_indexer_params.max_rare_cnt_target);
       logger.info() << "Finished getting exact kmer indexes" << std::endl;
       return kmers_indexes;
     } else {
@@ -38,8 +34,7 @@ get_indexed_queries(const std::vector<Contig>& queries,
       logger.info() << "Getting approximate kmer indexes..." << std::endl;
 
       std::vector<KmerIndex> kmers_indexes =
-          sketch_contigs::get_rare_kmers_approx<htype>(
-              queries, hasher, common_params, kmer_indexer_params);
+          sketch_contigs::get_rare_kmers_approx<htype>(queries, hasher, common_params, kmer_indexer_params);
       logger.info() << "Finished getting approximate kmer indexes" << std::endl;
       return kmers_indexes;
     }

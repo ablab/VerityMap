@@ -79,8 +79,7 @@ class gzstreambuf : public std::streambuf {
       return (gzstreambuf*) 0;
     mode = open_mode;
     // no append nor read/write mode
-    if ((mode & std::ios::ate) || (mode & std::ios::app)
-        || ((mode & std::ios::in) && (mode & std::ios::out)))
+    if ((mode & std::ios::ate) || (mode & std::ios::app) || ((mode & std::ios::in) && (mode & std::ios::out)))
       return (gzstreambuf*) 0;
     char fmode[10];
     char* fmodeptr = fmode;
@@ -166,9 +165,7 @@ class gzstreambase : virtual public std::ios {
     init(&buf);
     open(name, mode);
   }
-  ~gzstreambase() {
-    buf.close();
-  }
+  ~gzstreambase() { buf.close(); }
   void open(const char* name, int open_mode) {
     if (!buf.open(name, open_mode))
       clear(rdstate() | std::ios::badbit);
@@ -191,25 +188,17 @@ class gzstreambase : virtual public std::ios {
 class igzstream : public gzstreambase, public std::istream {
  public:
   igzstream() : std::istream(&buf) {}
-  igzstream(const char* name, int open_mode = std::ios::in)
-      : gzstreambase(name, open_mode),
-        std::istream(&buf) {}
+  igzstream(const char* name, int open_mode = std::ios::in) : gzstreambase(name, open_mode), std::istream(&buf) {}
   gzstreambuf* rdbuf() { return gzstreambase::rdbuf(); }
-  void open(const char* name, int open_mode = std::ios::in) {
-    gzstreambase::open(name, open_mode);
-  }
+  void open(const char* name, int open_mode = std::ios::in) { gzstreambase::open(name, open_mode); }
 };
 
 class ogzstream : public gzstreambase, public std::ostream {
  public:
   ogzstream() : std::ostream(&buf) {}
-  ogzstream(const char* name, int mode = std::ios::out)
-      : gzstreambase(name, mode),
-        std::ostream(&buf) {}
+  ogzstream(const char* name, int mode = std::ios::out) : gzstreambase(name, mode), std::ostream(&buf) {}
   gzstreambuf* rdbuf() { return gzstreambase::rdbuf(); }
-  void open(const char* name, int open_mode = std::ios::out) {
-    gzstreambase::open(name, open_mode);
-  }
+  void open(const char* name, int open_mode = std::ios::out) { gzstreambase::open(name, open_mode); }
 };
 
 }// namespace gzstream

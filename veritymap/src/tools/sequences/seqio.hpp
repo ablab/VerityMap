@@ -24,8 +24,7 @@ class ContigIterator {
  public:
   typedef StringContig value_type;
 
-  ContigIterator(Reader &_reader, bool _isend) : reader(_reader),
-                                                 isend(_isend) {
+  ContigIterator(Reader &_reader, bool _isend) : reader(_reader), isend(_isend) {
     if (reader.eof()) {
       isend = true;
     }
@@ -38,17 +37,11 @@ class ContigIterator {
     }
   }
 
-  StringContig operator*() {
-    return reader.get();
-  }
+  StringContig operator*() { return reader.get(); }
 
-  bool operator==(const ContigIterator &other) const {
-    return isend == other.isend;
-  }
+  bool operator==(const ContigIterator &other) const { return isend == other.isend; }
 
-  bool operator!=(const ContigIterator &other) const {
-    return isend != other.isend;
-  }
+  bool operator!=(const ContigIterator &other) const { return isend != other.isend; }
 };
 
 template<class Reader>
@@ -58,8 +51,7 @@ class SeqIterator : public std::iterator<std::forward_iterator_tag, Sequence, si
   bool isend;
 
  public:
-  SeqIterator(Reader &_reader, bool _isend) : reader(_reader),
-                                              isend(_isend) {
+  SeqIterator(Reader &_reader, bool _isend) : reader(_reader), isend(_isend) {
     if (reader.eof()) {
       isend = true;
     }
@@ -72,16 +64,10 @@ class SeqIterator : public std::iterator<std::forward_iterator_tag, Sequence, si
     }
   }
 
-  const Sequence &operator*() {
-    return reader.get().seq;
-  }
+  const Sequence &operator*() { return reader.get().seq; }
 
-  bool operator==(const SeqIterator &other) const {
-    return isend == other.isend;
-  }
-  bool operator!=(const SeqIterator &other) const {
-    return isend != other.isend;
-  }
+  bool operator==(const SeqIterator &other) const { return isend == other.isend; }
+  bool operator!=(const SeqIterator &other) const { return isend != other.isend; }
 };
 
 //    TODO: Deal with corrupted files, comments in read names
@@ -174,17 +160,18 @@ class SeqReader {
   friend class ContigIterator<SeqReader>;
   friend class SeqIterator<SeqReader>;
 
-  explicit SeqReader(Library _lib, size_t _min_read_size = size_t(-1) / 2, size_t _overlap = size_t(-1) / 8) : lib(std::move(_lib)),
-                                                                                                               file_it(lib.begin()),
-                                                                                                               min_read_size(_min_read_size),
-                                                                                                               overlap(_overlap) {
+  explicit SeqReader(Library _lib, size_t _min_read_size = size_t(-1) / 2, size_t _overlap = size_t(-1) / 8)
+      : lib(std::move(_lib)),
+        file_it(lib.begin()),
+        min_read_size(_min_read_size),
+        overlap(_overlap) {
     VERIFY(min_read_size >= overlap * 2);
     reset();
   }
 
-  explicit SeqReader(const std::filesystem::path &file_name,
-                     size_t _min_read_size = size_t(-1) / 2, size_t _overlap = size_t(-1) / 8) : SeqReader(Library({file_name}), _min_read_size, _overlap) {
-  }
+  explicit SeqReader(const std::filesystem::path &file_name, size_t _min_read_size = size_t(-1) / 2,
+                     size_t _overlap = size_t(-1) / 8)
+      : SeqReader(Library({file_name}), _min_read_size, _overlap) {}
 
   void reset() {
     file_it = lib.begin();
@@ -204,21 +191,13 @@ class SeqReader {
   //            return SeqReader(lib_, [](std::string &s) {compress_inplace(s);});
   //        }
 
-  ContigIterator<SeqReader> begin() {
-    return {*this, false};
-  }
+  ContigIterator<SeqReader> begin() { return {*this, false}; }
 
-  ContigIterator<SeqReader> end() {
-    return {*this, true};
-  }
+  ContigIterator<SeqReader> end() { return {*this, true}; }
 
-  SeqIterator<SeqReader> seqbegin() {
-    return {*this, false};
-  }
+  SeqIterator<SeqReader> seqbegin() { return {*this, false}; }
 
-  SeqIterator<SeqReader> seqend() {
-    return {*this, true};
-  }
+  SeqIterator<SeqReader> seqend() { return {*this, true}; }
 
   StringContig get() {
     StringContig tmp;
@@ -237,27 +216,19 @@ class SeqReader {
 
   std::vector<StringContig> readAll() {
     std::vector<StringContig> res;
-    while (!eof()) {
-      res.emplace_back(read());
-    }
+    while (!eof()) { res.emplace_back(read()); }
     return std::move(res);
   }
 
   std::vector<Contig> readAllContigs() {
     std::vector<Contig> res;
-    while (!eof()) {
-      res.emplace_back(read().makeContig());
-    }
+    while (!eof()) { res.emplace_back(read().makeContig()); }
     return std::move(res);
   }
 
-  bool eof() {
-    return next.isNull();
-  }
+  bool eof() { return next.isNull(); }
 
-  ~SeqReader() {
-    delete stream;
-  }
+  ~SeqReader() { delete stream; }
 };
 
 }// namespace io

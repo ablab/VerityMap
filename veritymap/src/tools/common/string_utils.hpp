@@ -15,8 +15,7 @@ static inline void ltrim_inplace(std::string &s) {
 }
 
 static inline void rtrim_inplace(std::string &s) {
-  s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return not std::isspace(ch); }).base(),
-          s.end());
+  s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return not std::isspace(ch); }).base(), s.end());
 }
 
 static inline std::string trim(std::string s) {

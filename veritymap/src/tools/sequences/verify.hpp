@@ -16,8 +16,7 @@ inline void print_stacktrace() {
   char **func_names = backtrace_symbols(stack_pointers, count);
 
   // Print the stack trace
-  for (int i = 0; i < count; ++i)
-    std::cerr << func_names[i] << std::endl;
+  for (int i = 0; i < count; ++i) std::cerr << func_names[i] << std::endl;
 
   // Free the string pointers
   free(func_names);

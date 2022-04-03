@@ -34,8 +34,7 @@ struct Config {
     size_t k_window_size;
     double window_unique_density;
 
-    enum class Strategy { exact,
-                          approximate };
+    enum class Strategy { exact, approximate };
     Strategy strategy;
     static std::string strategy2str(const Strategy& strategy) {
       return strategy == Strategy::exact ? "exact" : "approximate";
