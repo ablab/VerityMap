@@ -39,7 +39,7 @@ def run_mapper(assembly, reads_fname, out_dir, threads, datatype, is_careful):
            '--target', assembly.fname, '--queries', reads_fname,
            '-o', join(out_dir, 'veritymap'), '-t', str(threads), '--config', datatype]
     if is_careful: cmd += ['--careful']
-    subprocess.call(cmd, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
+    subprocess.call(cmd)
     output_fname = join(out_dir, 'veritymap', 'chains.tsv')
     sam_fname = join(out_dir, 'veritymap', 'alignments.sam')
     shutil.move(output_fname, assembly.chains_fname)
