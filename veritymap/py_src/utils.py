@@ -1,10 +1,25 @@
 from Bio import SeqIO
+import gzip
+import os
 
 
-def get_fasta_lenghts(fasta_fname):
+def get_asm_lenghts(fname):
     ref_names = []
-    with open(fasta_fname) as handle:
-        for record in SeqIO.parse(handle, 'fasta'):
+
+    opener, fname_wogzip = (gzip.open, os.path.splitext(fname)[0]) \
+        if fname.endswith('.gz') else (open, fname)
+    _, ext = os.path.splitext(fname_wogzip)
+    ext = ext[1:]
+    if ext in ['fa', 'fasta']:
+        formt = 'fasta'
+    elif ext in ['fq', 'fastq']:
+        formt = 'fastq'
+    else:
+        raise ValueError("Can't guess format of " + fname +
+                         " from its extension " + ext)
+
+    with opener(fname, 'rt') as handle:
+        for record in SeqIO.parse(handle, formt):
             ref_names.append((record.id, len(record.seq)))
     return ref_names
 

@@ -151,6 +151,6 @@ def do(assemblies, reads_fname, datatype, out_dir, threads, no_reuse, is_careful
     all_data = []
     for assembly in assemblies:
         errors = postprocess_chains(assembly, datatype)
-        coverage = calculate_coverage(get_fasta_lenghts(assembly.fname), assembly.bed_fname)
+        coverage = calculate_coverage(get_asm_lenghts(assembly.fname), assembly.bed_fname)
         all_data.append((errors, coverage))
     make_plotly_html(assemblies, all_data, out_dir)
