@@ -82,27 +82,27 @@ def make_plotly_html(assemblies, all_data, out_dir):
             prev_diff = 0
             with open(bed_fname, "a") as f:
                 for x,v,sv_diff in zip(real_x,vals,diffs):
-                    if v >=20:
+                    if v >= 20:
                         if not prev_i:
                             prev_i = x
                             prev_v = v
                             prev_diff = sv_diff
                     elif prev_i:
                         f.write("%s\t%d\t%d\t%d\t%2.f\n" %
-                                (ref_name, prev_i, x-step, prev_diff, prev_v))
+                                (ref_name, prev_i, x - step, prev_diff, prev_v))
                         prev_i = 0
                         prev_v = 0
-            errors_fname = join(out_dir, asm_id + "_errors.bed")
-            with open(errors_fname, "a") as f:
-                for e in new_errors:
-                    f.write("\t".join([str(s) for s in e]))
-                    f.write("\n")
+            # errors_fname = join(out_dir, asm_id + "_errors.bed")
+            # with open(errors_fname, "a") as f:
+            #     for e in new_errors:
+            #         f.write("\t".join([str(s) for s in e]))
+            #         f.write("\n")
             reads_fname = join(out_dir, asm_id + "_reads_dist_diff.txt")
             prev_i = 0
             with open(reads_fname, "a") as f:
                 support_reads = set()
-                for x,v,r in zip(real_x,vals,reads):
-                    if v >=20:
+                for x, v, r in zip(real_x, vals, reads):
+                    if v >= 20:
                         if not prev_i:
                             prev_i = x
                             prev_v = v
