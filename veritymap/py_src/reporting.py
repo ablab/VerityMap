@@ -95,7 +95,7 @@ def make_plotly_html(assemblies, all_data, out_dir):
             errors_fname = join(out_dir, asm_id + "_errors.bed")
             with open(errors_fname, "a") as f:
                 for e in new_errors:
-                    f.write(" ".join([str(s) for s in e]))
+                    f.write("\t".join([str(s) for s in e]))
                     f.write("\n")
             reads_fname = join(out_dir, asm_id + "_reads_dist_diff.txt")
             prev_i = 0
