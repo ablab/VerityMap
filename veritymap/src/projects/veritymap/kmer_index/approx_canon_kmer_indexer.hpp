@@ -8,6 +8,7 @@
 
 #include "../config/config.hpp"
 #include "../rolling_hash.hpp"
+#include "approx_kmer_indexer.hpp"
 #include "common/coverage_utils.hpp"
 #include "kmer_filter_canon.hpp"
 #include "kmer_index.hpp"
@@ -82,7 +83,7 @@ class ApproxCanonKmerIndexer {
     const size_t step_size = kmer_indexer_params.k_step_size;
     std::vector<std::tuple<size_t, htype, bool>> pos_hash_regular;
     kmer_window::KmerWindow kmer_window(window_size, pos_hash_regular);
-    const bool diploid = kmer_indexer_params.approximate_canon_kmer_indexer_params.diploid;
+    const bool diploid = common_params.diploid;
     while (true) {
       logger.info() << "Pos = " << kwh.pos << "\n";
       logger.info() << "Running jobs for chunk \n";

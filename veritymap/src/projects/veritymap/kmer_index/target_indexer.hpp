@@ -10,8 +10,10 @@
 #include "../config/config.hpp"
 #include "../rolling_hash.hpp"
 #include "approx_canon_kmer_indexer.hpp"
+#include "approx_canon_kmer_indexer_single_thread.hpp"
 #include "approx_kmer_indexer.hpp"
 #include "bloom/bloom.hpp"
+#include "exact_canon_kmer_indexer.hpp"
 #include "include/sketch/ccm.h"
 
 namespace veritymap::kmer_index {
@@ -54,13 +56,27 @@ kmer_index::IndexedContigs get_indexed_targets(const std::vector<Contig> &querie
       KmerIndexes kmers_indexes = kmer_indexer.extract(targets, queries, logger);
       logger.info() << "Finished getting approximate kmer indexes" << std::endl;
       return kmers_indexes;
-    } else {
-      VERIFY(kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate_canon);
+    }
+    if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate_canon) {
       logger.info() << "Getting approximate kmer indexes (canonical variant)..." << std::endl;
       const approx_canon_kmer_indexer::ApproxCanonKmerIndexer kmer_indexer(nthreads, hasher, common_params,
                                                                            kmer_indexer_params);
       KmerIndexes kmers_indexes = kmer_indexer.extract(targets, queries, logger);
       logger.info() << "Finished getting approximate (canonical variant) kmer indexes" << std::endl;
+      return kmers_indexes;
+    }
+    if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::exact_canon) {
+      logger.info() << "Getting exact kmer indexes (canonical variant)..." << std::endl;
+      const exact_canon_kmer_indexer::ExactCanonKmerIndexer kmer_indexer(hasher, common_params, kmer_indexer_params);
+      KmerIndexes kmers_indexes = kmer_indexer.extract(targets, queries, logger);
+      logger.info() << "Finished getting approximate (canonical variant) kmer indexes" << std::endl;
+      return kmers_indexes;
+    } else {
+      VERIFY(kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate_canon_single_thread);
+      const approx_canon_single_thread_kmer_indexer::ApproxCanonSingleThreadKmerIndexer kmer_indexer(
+          hasher, common_params, kmer_indexer_params);
+      KmerIndexes kmers_indexes = kmer_indexer.extract(targets, queries, logger);
+      logger.info() << "Finished getting approximate (canonical variant, single thread) kmer indexes" << std::endl;
       return kmers_indexes;
     }
   }();

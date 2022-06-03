@@ -14,6 +14,7 @@ namespace veritymap {
 struct Config {
   struct CommonParams {
     size_t k;
+    bool diploid;
   };
   CommonParams common_params;
 
@@ -34,23 +35,32 @@ struct Config {
     size_t k_window_size;
     double window_regular_density;
 
-    enum class Strategy { exact, approximate, approximate_canon };
+    enum class Strategy { exact, approximate, approximate_canon, exact_canon, approximate_canon_single_thread };
     Strategy strategy;
     static std::string strategy2str(const Strategy& strategy) {
       if (strategy == Strategy::exact)
         return "exact";
       if (strategy == Strategy::approximate)
         return "approximate";
-      VERIFY(strategy == Strategy::approximate_canon);
-      return "approximate_canon";
+      if (strategy == Strategy::approximate_canon)
+        return "approximate_canon";
+      if (strategy == Strategy::exact_canon)
+        return "exact_canon";
+      VERIFY(strategy == Strategy::approximate_canon_single_thread);
+      return "approximate_canon_single_thread";
     }
     static Strategy str2strategy(const std::string& str) {
-      VERIFY(str == "exact" or str == "approximate" or str == "approximate_canon");
+      VERIFY(str == "exact" or str == "approximate" or str == "approximate_canon" or str == "exact_canon"
+             or str == "approximate_canon_single_thread");
       if (str == "exact")
         return Strategy::exact;
       if (str == "approximate")
         return Strategy::approximate;
-      return Strategy::approximate_canon;
+      if (str == "approximate_canon")
+        return Strategy::approximate_canon;
+      if (str == "exact_canon")
+        return Strategy::exact_canon;
+      return Strategy::approximate_canon_single_thread;
     }
 
     struct ApproximateKmerIndexerParams {
@@ -66,9 +76,15 @@ struct Config {
       double exp_base;
       int nhash;
       size_t chunk_size;
-      bool diploid;
     };
     ApproximateCanonKmerIndexerParams approximate_canon_kmer_indexer_params;
+
+    struct ApproximateCanonSingleThreadKmerIndexerParams {
+      double false_positive_probability;
+      double exp_base;
+      int nhash;
+    };
+    ApproximateCanonSingleThreadKmerIndexerParams approximate_canon_single_thread_kmer_indexer_params;
 
     double careful_upper_bnd_cov_mult;
   };

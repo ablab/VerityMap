@@ -85,12 +85,12 @@ int main(int argc, char** argv) {
     return static_cast<std::filesystem::path>(config);
   }();
   veritymap::Config config = veritymap::Config::load_config_file(config_fn);
-  bool diploid_mode = parser.getCheck("diploid");
-  if (diploid_mode) {
-    // TODO refactor this out and modify config before copying into the output file
-    config.kmer_indexer_params.approximate_canon_kmer_indexer_params.diploid = true;
-    config.kmer_indexer_params.strategy = veritymap::Config::KmerIndexerParams::Strategy::approximate_canon;
-  }
+  // bool diploid_mode = parser.getCheck("diploid");
+  // if (diploid_mode) {
+  //   // TODO refactor this out and modify config before copying into the output file
+  //   config.common_params.diploid = true;
+  //   config.kmer_indexer_params.strategy = veritymap::Config::KmerIndexerParams::Strategy::approximate_canon;
+  // }
 
   const auto config_out_fn = output_dir / "config.tsv";
   std::filesystem::copy_file(config_fn, config_out_fn, std::filesystem::copy_options::overwrite_existing);

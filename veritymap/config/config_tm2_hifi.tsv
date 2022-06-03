@@ -16,6 +16,9 @@ false_positive_probability_canon  0.01
 exp_base_canon    0.01
 nhash_canon   5
 chunk_size_canon 5000000
+false_positive_probability_canon_single_thread  0.01
+exp_base_canon_single_thread    0.01
+nhash_canon_single_thread   5
 diploid 0
 careful_upper_bnd_cov_mult  3
 min_matches 20
