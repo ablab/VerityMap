@@ -70,6 +70,7 @@ class Matcher {
       const Config::HashParams::htype hash = kwh.get_fhash();
       if (not rep_kmer_bf.contains(hash) and target_kmer_index.contains(hash)) {
         const size_t tf64 = target_kmer_index.at(hash).size();
+        VERIFY(tf64 <= config.max_rare_cnt_target);
         VERIFY(tf64 <= std::numeric_limits<uint8_t>::max());
         const auto target_freq = static_cast<uint8_t>(tf64);
         for (const size_t tp : target_kmer_index.at(hash)) {

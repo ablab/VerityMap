@@ -23,12 +23,15 @@ Config Config::load_config_file(const std::filesystem::path& config_fn) {
   Config::KmerIndexerParams::ApproximateKmerIndexerParams aprx_kmer_indexer_params{
       stod(m.at("false_positive_probability")), stod(m.at("exp_base")), stoi(m.at("nhash")),
       stoull(m.at("chunk_size"))};
-  Config::KmerIndexerParams kmer_indexer_params{stoull(m.at("min_uncovered_len")), stoull(m.at("max_rare_cnt_target")),
-                                                // stoull(m.at("max_rare_cnt_query")),
-                                                stoull(m.at("k_step_size")), stoull(m.at("k_window_size")),
-                                                stod(m.at("window_unique_density")),
-                                                Config::KmerIndexerParams::str2strategy(m.at("strategy")),
-                                                aprx_kmer_indexer_params, stod(m.at("careful_upper_bnd_cov_mult"))};
+  Config::KmerIndexerParams::ApproximateCanonKmerIndexerParams aprx_canon_kmer_indexer_params{
+      stod(m.at("false_positive_probability_canon")), stod(m.at("exp_base_canon")), stoi(m.at("nhash_canon")),
+      stoull(m.at("chunk_size_canon")), (bool) stoi(m.at("diploid"))};
+  Config::KmerIndexerParams kmer_indexer_params{
+      stoull(m.at("min_uncovered_len")), stoull(m.at("max_rare_cnt_target")),
+      // stoull(m.at("max_rare_cnt_query")),
+      stoull(m.at("k_step_size")), stoull(m.at("k_window_size")), stod(m.at("window_regular_density")),
+      Config::KmerIndexerParams::str2strategy(m.at("strategy")), aprx_kmer_indexer_params,
+      aprx_canon_kmer_indexer_params, stod(m.at("careful_upper_bnd_cov_mult"))};
   Config::Chain2SAMParams::KSW2Params ksw_2_params{
       static_cast<int8_t>(stoi(m.at("match_score"))), static_cast<int8_t>(stoi(m.at("mis_score"))),
       static_cast<int8_t>(stoi(m.at("gapo"))), static_cast<int8_t>(stoi(m.at("gape")))};

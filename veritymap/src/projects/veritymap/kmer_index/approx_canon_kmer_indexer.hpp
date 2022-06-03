@@ -1,5 +1,5 @@
 //
-// Created by Andrey Bzikadze on 03/31/21.
+// Created by Andrey Bzikadze on 06/02/22.
 //
 
 #pragma once
@@ -9,28 +9,14 @@
 #include "../config/config.hpp"
 #include "../rolling_hash.hpp"
 #include "common/coverage_utils.hpp"
-#include "kmer_filter.hpp"
+#include "kmer_filter_canon.hpp"
 #include "kmer_index.hpp"
 #include "kmer_window.hpp"
 
-namespace veritymap::kmer_index::approx_kmer_indexer {
-
-template<typename K, typename V>
-std::pair<double, double> mean_stdev(const std::unordered_map<K, V> &v) {
-  auto it = v.begin();
-  double mean = it->second;
-  double variance = 0;
-  for (int k = 1; it != v.end(); ++it, ++k) {
-    double mean_pre = mean;
-    const V &val = it->second;
-    mean += (val - mean) / k;
-    variance += (val - mean) * (val - mean_pre);
-  }
-  return {mean, std::sqrt(variance / v.size())};
-}
+namespace veritymap::kmer_index::approx_canon_kmer_indexer {
 
 template<typename htype>
-class ApproxKmerIndexer {
+class ApproxCanonKmerIndexer {
   size_t nthreads{0};
   const RollingHash<htype> &hasher;
   Config::CommonParams common_params;
@@ -38,12 +24,13 @@ class ApproxKmerIndexer {
 
   struct HashPosType {
     htype fhash{0};
+    htype hash{0};
     size_t pos{0};
-    kmer_filter::KmerType kmer_type{kmer_filter::KmerType::banned};
+    kmer_filter_canon::KmerTypeCanon kmer_type{kmer_filter_canon::KmerTypeCanon::frequent};
   };
 
   std::vector<size_t> BinHashesInChunk(std::vector<std::vector<HashPosType>> &hashes_pos,
-                                       const kmer_filter::KmerFilter &kmer_filter, KWH<htype> &kwh,
+                                       const kmer_filter_canon::KmerFilterCanon &kmer_filter, KWH<htype> &kwh,
                                        const size_t ctg_ind) const {
     std::vector<size_t> sizes(nthreads, 0);
     auto process_chunk = [this, &hashes_pos, &sizes, &kmer_filter, &ctg_ind](size_t i) {
@@ -51,8 +38,8 @@ class ApproxKmerIndexer {
       const size_t size = sizes[i];
       for (int j = 0; j < size; ++j) {
         const htype fhash = hashes_pos_th[j].fhash;
-        hashes_pos_th[j].kmer_type =
-            kmer_filter.GetKmerType(ctg_ind, fhash, i, kmer_indexer_params.max_rare_cnt_target);
+        const htype hash = hashes_pos_th[j].hash;
+        hashes_pos_th[j].kmer_type = kmer_filter.GetKmerType(ctg_ind, hash, i, kmer_indexer_params.max_rare_cnt_target);
       }
     };
 
@@ -60,13 +47,13 @@ class ApproxKmerIndexer {
 
     for (size_t cnt = 0; cnt < chunk_size; ++cnt) {
       const htype fhash = kwh.get_fhash();
-      const htype rhash = kwh.get_rhash();
-      const size_t ithread = ((fhash * rhash) % (2 * nthreads)) / 2;
+      const htype hash = kwh.hash();
+      const size_t ithread = hash % nthreads;
 
       if (hashes_pos[ithread].size() == sizes[ithread]) {
-        hashes_pos[ithread].push_back({fhash, kwh.pos});
+        hashes_pos[ithread].push_back({fhash, hash, kwh.pos});
       } else {
-        hashes_pos[ithread][sizes[ithread]] = {fhash, kwh.pos};
+        hashes_pos[ithread][sizes[ithread]] = {fhash, hash, kwh.pos};
       }
       ++sizes[ithread];
       if (not kwh.hasNext()) {
@@ -81,7 +68,7 @@ class ApproxKmerIndexer {
     return sizes;
   }
 
-  [[nodiscard]] KmerIndex GetKmerIndex(const Contig &contig, const kmer_filter::KmerFilter &kmer_filter,
+  [[nodiscard]] KmerIndex GetKmerIndex(const Contig &contig, const kmer_filter_canon::KmerFilterCanon &kmer_filter,
                                        const size_t ctg_ind, logging::Logger &logger) const {
     if (contig.size() < hasher.k) {
       return {};
@@ -93,8 +80,9 @@ class ApproxKmerIndexer {
     KWH<htype> kwh({hasher, contig.seq, 0});
     const size_t window_size = kmer_indexer_params.k_window_size;
     const size_t step_size = kmer_indexer_params.k_step_size;
-    std::vector<std::tuple<size_t, htype, bool>> pos_hash_uniq;
-    kmer_window::KmerWindow kmer_window(window_size, pos_hash_uniq);
+    std::vector<std::tuple<size_t, htype, bool>> pos_hash_regular;
+    kmer_window::KmerWindow kmer_window(window_size, pos_hash_regular);
+    const bool diploid = kmer_indexer_params.approximate_canon_kmer_indexer_params.diploid;
     while (true) {
       logger.info() << "Pos = " << kwh.pos << "\n";
       logger.info() << "Running jobs for chunk \n";
@@ -105,27 +93,28 @@ class ApproxKmerIndexer {
         const auto &hashes_pos_th = hashes_pos[ithread];
         for (size_t j = 0; j < sizes[ithread]; ++j) {
           const auto &hash_pos = hashes_pos_th[j];
-          if (hash_pos.kmer_type == kmer_filter::KmerType::unique
-              or hash_pos.kmer_type == kmer_filter::KmerType::rare) {
-            const bool is_unique = hash_pos.kmer_type == kmer_filter::KmerType::unique;
-            pos_hash_uniq.emplace_back(hash_pos.pos, hash_pos.fhash, is_unique);
+          const auto &kmer_type = hash_pos.kmer_type;
+          if (kmer_type != kmer_filter_canon::KmerTypeCanon::frequent) {
+            const bool is_regular = kmer_filter_canon::IsKmerTypeCanonRegular(kmer_type, diploid);
+            pos_hash_regular.emplace_back(hash_pos.pos, hash_pos.fhash, is_regular);
           }
         }
       }
 
       logger.info() << "Sorting kmer positions \n";
-      std::sort(pos_hash_uniq.begin(), pos_hash_uniq.end());
+      std::sort(pos_hash_regular.begin(), pos_hash_regular.end());
 
       logger.info() << "Extending kmer index \n";
       kmer_window.Reset();
-      for (auto it = pos_hash_uniq.begin(); it != pos_hash_uniq.end(); ++it) {
-        const auto [pos, hash, is_unique] = *it;
+      for (auto it = pos_hash_regular.begin(); it != pos_hash_regular.end(); ++it) {
+        const auto [pos, hash, is_regular] = *it;
         kmer_window.Inc();
         if (kwh.hasNext() and kwh.pos - pos < window_size / 2) {
-          pos_hash_uniq = {it, pos_hash_uniq.end()};
+          pos_hash_regular = {it, pos_hash_regular.end()};
           break;
         }
         if ((kmer_window.RegularFrac() < kmer_indexer_params.window_regular_density) or (pos % step_size == 0)) {
+          VERIFY(kmer_index[hash].size() <= kmer_indexer_params.max_rare_cnt_target);
           kmer_index[hash].emplace_back(pos);
         }
       }
@@ -137,9 +126,9 @@ class ApproxKmerIndexer {
     }
     return kmer_index;
   }
-
   [[nodiscard]] KmerIndexes GetKmerIndexes(const std::vector<Contig> &contigs,
-                                           const kmer_filter::KmerFilter &kmer_filter, logging::Logger &logger) const {
+                                           const kmer_filter_canon::KmerFilterCanon &kmer_filter,
+                                           logging::Logger &logger) const {
     KmerIndexes kmer_indexes;
     for (auto it = contigs.cbegin(); it != contigs.cend(); ++it) {
       const Contig &contig{*it};
@@ -190,7 +179,7 @@ class ApproxKmerIndexer {
 
     logger.info() << "Finished counting frequences of unique k-mers in the queries...\n";
 
-    auto [mean, stddev] = mean_stdev(unique_kmers);
+    auto [mean, stddev] = veritymap::kmer_index::approx_kmer_indexer::mean_stdev(unique_kmers);
     logger.info() << "Mean (std) multiplicity of a unique k-mer = " << mean << " (" << stddev << ")\n";
 
     const uint max_read_freq = mean + kmer_indexer_params.careful_upper_bnd_cov_mult * stddev;
@@ -213,23 +202,25 @@ class ApproxKmerIndexer {
   }
 
  public:
-  ApproxKmerIndexer(const size_t nthreads, const RollingHash<htype> &hasher, const Config::CommonParams &common_params,
-                    const Config::KmerIndexerParams &kmer_indexer_params)
+  ApproxCanonKmerIndexer(const size_t nthreads, const RollingHash<htype> &hasher,
+                         const Config::CommonParams &common_params,
+                         const Config::KmerIndexerParams &kmer_indexer_params)
       : nthreads{nthreads},
         hasher{hasher},
         common_params{common_params},
         kmer_indexer_params{kmer_indexer_params} {}
 
-  ApproxKmerIndexer(const ApproxKmerIndexer &) = delete;
-  ApproxKmerIndexer(ApproxKmerIndexer &&) = delete;
-  ApproxKmerIndexer &operator=(const ApproxKmerIndexer &) = delete;
-  ApproxKmerIndexer &operator=(ApproxKmerIndexer &&) = delete;
+  ApproxCanonKmerIndexer(const ApproxCanonKmerIndexer &) = delete;
+  ApproxCanonKmerIndexer(ApproxCanonKmerIndexer &&) = delete;
+  ApproxCanonKmerIndexer &operator=(const ApproxCanonKmerIndexer &) = delete;
+  ApproxCanonKmerIndexer &operator=(ApproxCanonKmerIndexer &&) = delete;
 
   [[nodiscard]] KmerIndexes extract(const std::vector<Contig> &contigs, const std::vector<Contig> &readset,
                                     logging::Logger &logger) const {
-    const kmer_filter::KmerFilterBuilder kmer_filter_builder{nthreads, hasher, common_params, kmer_indexer_params};
+    const kmer_filter_canon::KmerFilterCanonBuilder kmer_filter_builder{nthreads, hasher, common_params,
+                                                                        kmer_indexer_params};
     logger.info() << "Creating kmer filter\n";
-    const kmer_filter::KmerFilter kmer_filter = kmer_filter_builder.GetKmerFilter(contigs, logger);
+    const kmer_filter_canon::KmerFilterCanon kmer_filter = kmer_filter_builder.GetKmerFilterCanon(contigs, logger);
     logger.info() << "Finished creating kmer filter. Using it to build kmer indexes\n";
     KmerIndexes kmer_indexes = GetKmerIndexes(contigs, kmer_filter, logger);
 
@@ -240,4 +231,4 @@ class ApproxKmerIndexer {
   }
 };
 
-}// End namespace veritymap::kmer_index::approx_kmer_indexer
+}// namespace veritymap::kmer_index::approx_canon_kmer_indexer

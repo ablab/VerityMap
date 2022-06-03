@@ -32,18 +32,25 @@ struct Config {
     //               "Match stores frequency as uint8_t to economize memory usage");
     size_t k_step_size;
     size_t k_window_size;
-    double window_unique_density;
+    double window_regular_density;
 
-    enum class Strategy { exact, approximate };
+    enum class Strategy { exact, approximate, approximate_canon };
     Strategy strategy;
     static std::string strategy2str(const Strategy& strategy) {
-      return strategy == Strategy::exact ? "exact" : "approximate";
+      if (strategy == Strategy::exact)
+        return "exact";
+      if (strategy == Strategy::approximate)
+        return "approximate";
+      VERIFY(strategy == Strategy::approximate_canon);
+      return "approximate_canon";
     }
     static Strategy str2strategy(const std::string& str) {
-      VERIFY(str == "exact" or str == "approximate");
+      VERIFY(str == "exact" or str == "approximate" or str == "approximate_canon");
       if (str == "exact")
         return Strategy::exact;
-      return Strategy::approximate;
+      if (str == "approximate")
+        return Strategy::approximate;
+      return Strategy::approximate_canon;
     }
 
     struct ApproximateKmerIndexerParams {
@@ -53,6 +60,15 @@ struct Config {
       size_t chunk_size;
     };
     ApproximateKmerIndexerParams approximate_kmer_indexer_params;
+
+    struct ApproximateCanonKmerIndexerParams {
+      double false_positive_probability;
+      double exp_base;
+      int nhash;
+      size_t chunk_size;
+      bool diploid;
+    };
+    ApproximateCanonKmerIndexerParams approximate_canon_kmer_indexer_params;
 
     double careful_upper_bnd_cov_mult;
   };

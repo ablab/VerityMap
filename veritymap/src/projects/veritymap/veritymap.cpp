@@ -13,10 +13,10 @@
 #include "version/version.hpp"
 
 int main(int argc, char** argv) {
-  CLParser parser{
-      {"output-dir=", "target=", "queries=none", "threads=40", "only-index", "careful", "index=none", "config=hifi"},
-      {},
-      {"o=output-dir", "t=threads"}};
+  CLParser parser{{"output-dir=", "target=", "queries=none", "threads=40", "only-index", "careful", "diploid",
+                   "index=none", "config=hifi"},
+                  {},
+                  {"o=output-dir", "t=threads"}};
   parser.parseCL(argc, argv);
   if (!parser.check().empty()) {
     std::cerr << "Incorrect parameters" << std::endl;
@@ -85,6 +85,13 @@ int main(int argc, char** argv) {
     return static_cast<std::filesystem::path>(config);
   }();
   veritymap::Config config = veritymap::Config::load_config_file(config_fn);
+  bool diploid_mode = parser.getCheck("diploid");
+  if (diploid_mode) {
+    // TODO refactor this out and modify config before copying into the output file
+    config.kmer_indexer_params.approximate_canon_kmer_indexer_params.diploid = true;
+    config.kmer_indexer_params.strategy = veritymap::Config::KmerIndexerParams::Strategy::approximate_canon;
+  }
+
   const auto config_out_fn = output_dir / "config.tsv";
   std::filesystem::copy_file(config_fn, config_out_fn, std::filesystem::copy_options::overwrite_existing);
   logger.info() << "Config exported to " << config_out_fn << "\n";

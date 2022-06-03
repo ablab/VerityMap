@@ -9,6 +9,7 @@
 
 #include "../config/config.hpp"
 #include "../rolling_hash.hpp"
+#include "approx_canon_kmer_indexer.hpp"
 #include "approx_kmer_indexer.hpp"
 #include "bloom/bloom.hpp"
 #include "include/sketch/ccm.h"
@@ -45,13 +46,21 @@ kmer_index::IndexedContigs get_indexed_targets(const std::vector<Contig> &querie
       std::vector<KmerIndex> kmers_indexes = get_rare_kmers(targets, hasher, kmer_indexer_params.max_rare_cnt_target);
       logger.info() << "Finished getting exact kmer indexes" << std::endl;
       return kmers_indexes;
-    } else {
-      VERIFY(kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate)
+    }
+    if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate) {
       logger.info() << "Getting approximate kmer indexes..." << std::endl;
 
       const approx_kmer_indexer::ApproxKmerIndexer kmer_indexer(nthreads, hasher, common_params, kmer_indexer_params);
       KmerIndexes kmers_indexes = kmer_indexer.extract(targets, queries, logger);
       logger.info() << "Finished getting approximate kmer indexes" << std::endl;
+      return kmers_indexes;
+    } else {
+      VERIFY(kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate_canon);
+      logger.info() << "Getting approximate kmer indexes (canonical variant)..." << std::endl;
+      const approx_canon_kmer_indexer::ApproxCanonKmerIndexer kmer_indexer(nthreads, hasher, common_params,
+                                                                           kmer_indexer_params);
+      KmerIndexes kmers_indexes = kmer_indexer.extract(targets, queries, logger);
+      logger.info() << "Finished getting approximate (canonical variant) kmer indexes" << std::endl;
       return kmers_indexes;
     }
   }();
