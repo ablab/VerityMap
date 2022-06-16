@@ -2,6 +2,8 @@
 // Created by Andrey Bzikadze on 03/31/22.
 //
 
+#include "kmer_index/indexed_contigs.hpp"
+
 namespace veritymap::mapper {
 
 class Mapper {
@@ -14,40 +16,32 @@ class Mapper {
   const RollingHash<Config::HashParams::htype> &hasher;
 
  private:
-  [[nodiscard]] chaining::Chains MapSingleQueryStrand(const kmer_index_::IndexedContig &indexed_target,
+  [[nodiscard]] chaining::Chains MapSingleQueryStrand(const indexed_contigs::IndexedContigs &indexed_targets,
                                                       const Contig &query,
                                                       const dna_strand::Strand &query_strand) const {
-    const matches::Matches matches =
-        matcher.GetMatches(indexed_target.get_contig(), indexed_target.get_kmer_index(), query, query_strand);
-    if (matches.size() < config.chaining_params.min_matches) {
-      return {};
+    chaining::Chains chains;
+    for (int i = 0; i < indexed_targets.Size(); ++i) {
+      const matches::Matches matches = matcher.GetMatches(indexed_targets, i, query, query_strand);
+      if (matches.size() < config.chaining_params.min_matches) {
+        continue;
+      }
+      const auto [scores, backtracks] = dp_scorer.GetScores(matches);
+      chaining::Chains new_chains =
+          chainer.GetChains(indexed_targets.Contigs().at(i), query, query_strand, matches, scores, backtracks);
+      for (chaining::Chain &chain : new_chains) { chains.emplace_back(std::move(chain)); }
     }
-
-    const auto [scores, backtracks] = dp_scorer.GetScores(matches);
-
-    chaining::Chains chains =
-        chainer.GetChains(indexed_target.get_contig(), query, query_strand, matches, scores, backtracks);
     return chains;
   }
 
   [[nodiscard]] std::optional<chaining::Chain> MapSingleQuery(
-      const Contig &query, const kmer_index_::IndexedContigs &indexed_targets) const {
+      const Contig &query, const indexed_contigs::IndexedContigs &indexed_targets) const {
     using score_type = typename Config::ChainingParams::score_type;
 
-    chaining::Chains chains;
-    for (const kmer_index_::IndexedContig &indexed_target : indexed_targets) {
-      chaining::Chains chains_f = MapSingleQueryStrand(indexed_target, query, dna_strand::Strand::forward);
-      chaining::Chains chains_r = MapSingleQueryStrand(indexed_target, query, dna_strand::Strand::reverse);
+    chaining::Chains chains = MapSingleQueryStrand(indexed_targets, query, dna_strand::Strand::forward);
+    chaining::Chains chains_r = MapSingleQueryStrand(indexed_targets, query, dna_strand::Strand::reverse);
 
-      for (size_t i = 0; i < 2; ++i) {
-        if (chains_f.size() > i) {
-          chains.emplace_back(std::move(chains_f[i]));
-        }
-        if (chains_r.size() > i) {
-          chains.emplace_back(std::move(chains_r[i]));
-        }
-      }
-    }
+    for (chaining::Chain &chain : chains_r) { chains.emplace_back(std::move(chain)); }
+
     if (chains.empty())
       return std::nullopt;
     if (chains.size() == 1)
@@ -84,16 +78,14 @@ class Mapper {
         chainer{config.common_params, config.chaining_params},
         hasher{hasher} {}
 
-  void ParallelRun(const kmer_index_::IndexedContigs &indexed_targets, const std::vector<Contig> &queries,
+  void ParallelRun(const indexed_contigs::IndexedContigs &indexed_targets, const std::vector<Contig> &queries,
                    const std::filesystem::path &chains_fn, const std::filesystem::path &sam_fn,
                    const std::string &cmd) {
     std::mutex chainsMutex;
-    using TargetQuery = std::tuple<const kmer_index_::IndexedContig *, const Contig *>;
 
     std::ofstream chains_os(chains_fn);
     std::ofstream sam_os(sam_fn);
-    for (const kmer_index_::IndexedContig &itarget : indexed_targets) {
-      const Contig &target = itarget.get_contig();
+    for (const Contig &target : indexed_targets.Contigs()) {
       sam_os << "@SQ\tSN:" << target.id << "\tLN:" << target.seq.size() << "\n";
     }
     sam_os << "@PG\tID:VerityMap\tPN:VerityMap\tVN:2.0\tCL:" << cmd << "\n";

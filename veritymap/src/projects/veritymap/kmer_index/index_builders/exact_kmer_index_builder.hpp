@@ -10,15 +10,14 @@
 namespace veritymap::kmer_index_builder {
 
 class ExactKmerIndexBuilder : public AbstractKmerIndexBuilder {
-  std::vector<kmer_index::KmerIndex::KmerCounter> GetCounters(const std::vector<Contig> &ctgs) const {
+  [[nodiscard]] std::vector<kmer_index::KmerIndex::KmerCounter> GetCounters(const std::vector<Contig> &ctgs) const {
     std::vector<kmer_index::KmerIndex::KmerCounter> counters;
     for (auto it = ctgs.cbegin(); it != ctgs.cend(); ++it) {
       const Contig &ctg = *it;
-      std::unordered_map<Config::HashParams::htype, size_t> &counter{counters.emplace_back()};
+      std::unordered_map<Config::HashParams::htype, int64_t> &counter{counters.emplace_back()};
       if (ctg.size() < hasher.k) {
         continue;
       }
-      const size_t i = it - ctgs.cbegin();
       KWH<Config::HashParams::htype> kwh(hasher, ctg.seq, 0);
       while (true) {
         counter[kwh.get_fhash()] += 1;

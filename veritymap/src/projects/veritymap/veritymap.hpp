@@ -76,7 +76,6 @@ class VerityMap {
       return;
     }
 
-    /*
     const auto chains_fn = outdir / "chains.tsv";
     const auto sam_fn = outdir / "alignments.sam";
 
@@ -85,7 +84,6 @@ class VerityMap {
     mapper.ParallelRun(indexed_targets, queries, chains_fn, sam_fn, cmd);
 
     logger.info() << "Finished outputting chains to " << chains_fn << " and sam records to " << sam_fn << std::endl;
-    */
   }
 };
 

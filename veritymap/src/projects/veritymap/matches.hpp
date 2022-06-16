@@ -6,6 +6,7 @@
 
 #include "config/config.hpp"
 #include "kmer_index/filter_rep_kmers.hpp"
+#include "kmer_index/indexed_contigs.hpp"
 #include "kmer_index/kmer_index_.hpp"
 #include "strand.hpp"
 
@@ -53,8 +54,8 @@ class Matcher {
       : config{config},
         hasher{hasher} {}
 
-  Matches GetMatches(const Contig& target, const kmer_index_::KmerIndex& target_kmer_index, const Contig& query,
-                     const dna_strand::Strand& query_strand) const {
+  [[nodiscard]] Matches GetMatches(const indexed_contigs::IndexedContigs& indexed_targets, const int64_t i,
+                                   const Contig& query, const dna_strand::Strand& query_strand) const {
     Sequence seq = query_strand == dna_strand::Strand::forward ? query.seq : query.RC().seq;
     if (seq.size() < hasher.k) {
       return {};
@@ -66,17 +67,21 @@ class Matcher {
 
     Matches matches;
     KWH<Config::HashParams::htype> kwh(hasher, seq, 0);
+    const kmer_index::KmerIndex& index = indexed_targets.Index();
     while (true) {
       const Config::HashParams::htype hash = kwh.get_fhash();
-      if (not rep_kmer_bf.contains(hash) and target_kmer_index.contains(hash)) {
-        const size_t tf64 = target_kmer_index.at(hash).size();
-        VERIFY(tf64 <= config.max_rare_cnt_target);
-        VERIFY(tf64 <= std::numeric_limits<uint8_t>::max());
-        const auto target_freq = static_cast<uint8_t>(tf64);
-        for (const size_t tp : target_kmer_index.at(hash)) {
+      const int64_t count64 = index.GetCount(hash);
+      const std::vector<int64_t>* pos = index.GetPos(hash, i);
+      const int64_t count_i = pos == nullptr ? 0 : pos->size();
+      VERIFY(count64 >= count_i);
+      if (not rep_kmer_bf.contains(hash) and count_i) {
+        VERIFY(count64 <= config.max_rare_cnt_target);
+        VERIFY(count64 <= std::numeric_limits<uint8_t>::max());
+        const auto count = static_cast<uint8_t>(count64);
+        for (const int64_t tp : *pos) {
           VERIFY(kwh.pos < std::numeric_limits<int32_t>::max());
           matches.push_back(
-              {static_cast<Config::ChainingParams::match_pos_type>(tp), static_cast<int32_t>(kwh.pos), target_freq});
+              {static_cast<Config::ChainingParams::match_pos_type>(tp), static_cast<int32_t>(kwh.pos), count});
         }
       }
       if (not kwh.hasNext()) {

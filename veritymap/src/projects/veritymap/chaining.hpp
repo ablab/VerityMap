@@ -40,6 +40,11 @@ struct Chain {
   Chain &operator=(Chain &&) = delete;
 };
 
+inline bool operator<(const Chain &lhs, const Chain &rhs) { lhs.score < rhs.score; }
+inline bool operator>(const Chain &lhs, const Chain &rhs) { return operator<(rhs, lhs); }
+inline bool operator<=(const Chain &lhs, const Chain &rhs) { return !operator>(lhs, rhs); }
+inline bool operator>=(const Chain &lhs, const Chain &rhs) { return !operator<(lhs, rhs); }
+
 std::ostream &operator<<(std::ostream &os, const Chain &chain) {
   const std::string strand = dna_strand::strand2str(chain.query_strand);
   os << strand << "Aln " << chain.query.id << " " << chain.target.id << " " << chain.query_st() << " "

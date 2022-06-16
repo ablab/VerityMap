@@ -61,6 +61,11 @@ class IndexedContigs {
     }
     return os;
   }
+
+  [[nodiscard]] const std::vector<Contig>& Contigs() const { return contigs; }
+  [[nodiscard]] int64_t Size() const { return contigs.size(); }
+
+  [[nodiscard]] const kmer_index::KmerIndex& Index() const { return index; }
 };
 
 }// namespace veritymap::indexed_contigs
