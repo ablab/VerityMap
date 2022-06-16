@@ -9,46 +9,36 @@
 
 #include "../config/config.hpp"
 #include "../rolling_hash.hpp"
-#include "approx_canon_kmer_indexer.hpp"
-#include "approx_canon_kmer_indexer_single_thread.hpp"
-#include "approx_kmer_indexer.hpp"
-#include "bloom/bloom.hpp"
-#include "exact_canon_kmer_indexer.hpp"
-#include "include/sketch/ccm.h"
+#include "common/logging.hpp"
+#include "index_builders/exact_kmer_index_builder.hpp"
+#include "indexed_contigs.hpp"
+// #include "approx_canon_kmer_indexer.hpp"
+// #include "approx_canon_kmer_indexer_single_thread.hpp"
+// #include "approx_kmer_indexer.hpp"
+// #include "bloom/bloom.hpp"
+// #include "exact_canon_kmer_indexer.hpp"
+// #include "include/sketch/ccm.h"
 
 namespace veritymap::kmer_index {
 
 using Counter = std::unordered_map<Config::HashParams::htype, size_t>;
 
-kmer_index::IndexedContigs get_indexed_targets(const std::vector<Contig> &queries, const std::vector<Contig> &targets,
-                                               const std::filesystem::path &outdir,
-                                               const RollingHash<Config::HashParams::htype> &hasher,
-                                               const size_t nthreads, logging::Logger &logger,
-                                               const std::filesystem::path &index_path,
-                                               const Config::CommonParams &common_params,
-                                               const Config::KmerIndexerParams &kmer_indexer_params) {
-  using htype = Config::HashParams::htype;
-  const auto kmer_indexes_fn = outdir / "kmer_indexes.tsv";
+class TargetIndexer {
+  const Config::CommonParams common_params;
+  const Config::KmerIndexerParams kmer_indexer_params;
+  logging::Logger &logger;
+  const RollingHash<Config::HashParams::htype> &hasher;
 
-  if (not index_path.empty()) {
-    logger.info() << "Importing kmer index from " << index_path << std::endl;
-    std::ifstream kmer_indexes_is(index_path);
-    IndexedContigs indexed_targets =
-        import_index(targets, hasher, kmer_indexer_params.max_rare_cnt_target, kmer_indexes_is);
-    kmer_indexes_is.close();
-    logger.info() << "Finished importing kmer index from " << index_path << std::endl;
-    std::filesystem::copy_file(index_path, kmer_indexes_fn, std::filesystem::copy_options::overwrite_existing);
-    return indexed_targets;
-  }
-
-  std::vector<KmerIndex> kmers_indexes = [&queries, &targets, &nthreads, &hasher, &common_params, &kmer_indexer_params,
-                                          &index_path, &logger] {
+  KmerIndex ConstructIndex(const std::vector<Contig> &targets, const std::vector<Contig> &queries) {
+    using namespace kmer_index_builder;
     if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::exact) {
       logger.info() << "Getting exact kmer indexes..." << std::endl;
-      std::vector<KmerIndex> kmers_indexes = get_rare_kmers(targets, hasher, kmer_indexer_params.max_rare_cnt_target);
+      ExactKmerIndexBuilder builder(hasher, common_params, kmer_indexer_params, logger);
+      KmerIndex index = builder.Build(targets, queries);
       logger.info() << "Finished getting exact kmer indexes" << std::endl;
-      return kmers_indexes;
+      return index;
     }
+    /*
     if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate) {
       logger.info() << "Getting approximate kmer indexes..." << std::endl;
 
@@ -79,24 +69,42 @@ kmer_index::IndexedContigs get_indexed_targets(const std::vector<Contig> &querie
       logger.info() << "Finished getting approximate (canonical variant, single thread) kmer indexes" << std::endl;
       return kmers_indexes;
     }
-  }();
-
-  IndexedContigs indexed_targets;
-  for (auto it = kmers_indexes.begin(); it != kmers_indexes.end(); ++it) {
-    const Contig &target = targets.at(it - kmers_indexes.begin());
-    indexed_targets.emplace_back(target, hasher, kmer_indexer_params.max_rare_cnt_target, std::move(*it));
+    */
   }
 
-  std::ofstream kmer_indexes_os(kmer_indexes_fn);
-  veritymap::kmer_index::export_index(kmer_indexes_os, indexed_targets);
-  kmer_indexes_os.close();
-  logger.info() << "Kmer indexes are exported to " << kmer_indexes_fn << std::endl;
+ public:
+  TargetIndexer(const Config::CommonParams &common_params, const Config::KmerIndexerParams kmer_indexer_params,
+                logging::Logger &logger, const RollingHash<Config::HashParams::htype> &hasher)
+      : common_params{common_params},
+        kmer_indexer_params{kmer_indexer_params},
+        logger{logger},
+        hasher{hasher} {}
 
-  for (const auto &indexed_target : indexed_targets) {
-    logger.info() << "Target " << indexed_target.get_contig().id
-                  << ", # Rare kmers = " << indexed_target.get_kmer_index().size() << std::endl;
+  indexed_contigs::IndexedContigs GetIndexedTargets(const std::vector<Contig> &targets,
+                                                    const std::vector<Contig> &queries,
+                                                    const std::optional<std::filesystem::path> &index_path,
+                                                    const std::filesystem::path &outdir) {
+    using htype = Config::HashParams::htype;
+
+    const auto save_index_path = outdir / "kmer_indexes.tsv";
+    auto index = [&index_path, &targets, &queries, this]() -> KmerIndex {
+      if (index_path) {
+        logger.info() << "Reading index from " << index_path.value() << "\n";
+        return {targets, index_path.value()};
+      }
+      return ConstructIndex(targets, queries);
+    }();
+
+    std::ofstream index_os(save_index_path);
+    index_os << index;
+    index_os.close();
+    logger.info() << "Kmer indexes are exported to " << save_index_path << std::endl;
+
+    indexed_contigs::IndexedContigs indexed_targets(targets, hasher, index);
+    indexed_targets.Summary(logger);
+
+    return indexed_targets;
   }
+};
 
-  return indexed_targets;
-}
 }// End namespace veritymap::kmer_index

@@ -14,7 +14,7 @@ class Mapper {
   const RollingHash<Config::HashParams::htype> &hasher;
 
  private:
-  [[nodiscard]] chaining::Chains MapSingleQueryStrand(const kmer_index::IndexedContig &indexed_target,
+  [[nodiscard]] chaining::Chains MapSingleQueryStrand(const kmer_index_::IndexedContig &indexed_target,
                                                       const Contig &query,
                                                       const dna_strand::Strand &query_strand) const {
     const matches::Matches matches =
@@ -30,12 +30,12 @@ class Mapper {
     return chains;
   }
 
-  [[nodiscard]] std::optional<chaining::Chain> MapSingleQuery(const Contig &query,
-                                                              const kmer_index::IndexedContigs &indexed_targets) const {
+  [[nodiscard]] std::optional<chaining::Chain> MapSingleQuery(
+      const Contig &query, const kmer_index_::IndexedContigs &indexed_targets) const {
     using score_type = typename Config::ChainingParams::score_type;
 
     chaining::Chains chains;
-    for (const kmer_index::IndexedContig &indexed_target : indexed_targets) {
+    for (const kmer_index_::IndexedContig &indexed_target : indexed_targets) {
       chaining::Chains chains_f = MapSingleQueryStrand(indexed_target, query, dna_strand::Strand::forward);
       chaining::Chains chains_r = MapSingleQueryStrand(indexed_target, query, dna_strand::Strand::reverse);
 
@@ -84,15 +84,15 @@ class Mapper {
         chainer{config.common_params, config.chaining_params},
         hasher{hasher} {}
 
-  void ParallelRun(const kmer_index::IndexedContigs &indexed_targets, const std::vector<Contig> &queries,
+  void ParallelRun(const kmer_index_::IndexedContigs &indexed_targets, const std::vector<Contig> &queries,
                    const std::filesystem::path &chains_fn, const std::filesystem::path &sam_fn,
                    const std::string &cmd) {
     std::mutex chainsMutex;
-    using TargetQuery = std::tuple<const kmer_index::IndexedContig *, const Contig *>;
+    using TargetQuery = std::tuple<const kmer_index_::IndexedContig *, const Contig *>;
 
     std::ofstream chains_os(chains_fn);
     std::ofstream sam_os(sam_fn);
-    for (const kmer_index::IndexedContig &itarget : indexed_targets) {
+    for (const kmer_index_::IndexedContig &itarget : indexed_targets) {
       const Contig &target = itarget.get_contig();
       sam_os << "@SQ\tSN:" << target.id << "\tLN:" << target.seq.size() << "\n";
     }

@@ -6,7 +6,7 @@
 
 #include "config/config.hpp"
 #include "kmer_index/filter_rep_kmers.hpp"
-#include "kmer_index/kmer_index.hpp"
+#include "kmer_index/kmer_index_.hpp"
 #include "strand.hpp"
 
 namespace veritymap::matches {
@@ -53,7 +53,7 @@ class Matcher {
       : config{config},
         hasher{hasher} {}
 
-  Matches GetMatches(const Contig& target, const kmer_index::KmerIndex& target_kmer_index, const Contig& query,
+  Matches GetMatches(const Contig& target, const kmer_index_::KmerIndex& target_kmer_index, const Contig& query,
                      const dna_strand::Strand& query_strand) const {
     Sequence seq = query_strand == dna_strand::Strand::forward ? query.seq : query.RC().seq;
     if (seq.size() < hasher.k) {

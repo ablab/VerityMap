@@ -52,17 +52,7 @@ int main(int argc, char** argv) {
   logger << "CMD: " << cmd << std::endl;
 
   const std::filesystem::path target_path = std::filesystem::canonical(parser.getValue("target"));
-
-  auto get_path_w_def = [&parser](const std::string& parameter) {
-    std::filesystem::path path = parser.getValue(parameter);
-    if (path != "none") {
-      path = std::filesystem::canonical(path);
-    } else {
-      path = "";
-    }
-    return path;
-  };
-  const std::filesystem::path queries_path = get_path_w_def("queries");
+  const std::filesystem::path queries_path = std::filesystem::canonical(parser.getValue("queries"));
 
   bool only_index = parser.getCheck("only-index");
   bool careful_mode = parser.getCheck("careful");
@@ -71,7 +61,15 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  const std::filesystem::path index_path = get_path_w_def("index");
+  auto get_path_w_def = [&parser](const std::string& parameter) -> std::optional<std::filesystem::path> {
+    std::filesystem::path path = parser.getValue(parameter);
+    std::optional<std::filesystem::path> path_opt;
+    if (path != "none") {
+      return std::filesystem::canonical(path);
+    }
+    return {};
+  };
+  const std::optional<std::filesystem::path> index_path = get_path_w_def("index");
 
   const std::filesystem::path binary_path = argv[0];
   const std::filesystem::path config_fn = [&parser, &logger, &binary_path] {
