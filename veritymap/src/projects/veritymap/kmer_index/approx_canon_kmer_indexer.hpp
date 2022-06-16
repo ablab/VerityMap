@@ -11,7 +11,6 @@
 #include "approx_kmer_indexer.hpp"
 #include "common/coverage_utils.hpp"
 #include "kmer_filter_canon.hpp"
-#include "kmer_index_.hpp"
 #include "kmer_window.hpp"
 
 namespace veritymap::kmer_index::approx_canon_kmer_indexer {

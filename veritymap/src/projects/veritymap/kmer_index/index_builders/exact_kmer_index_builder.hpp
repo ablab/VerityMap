@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <unordered_set>
+
 #include "../../rolling_hash.hpp"
 #include "kmer_index_builder.hpp"
 

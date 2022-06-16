@@ -7,7 +7,6 @@
 #include "config/config.hpp"
 #include "kmer_index/filter_rep_kmers.hpp"
 #include "kmer_index/indexed_contigs.hpp"
-#include "kmer_index/kmer_index_.hpp"
 #include "strand.hpp"
 
 namespace veritymap::matches {

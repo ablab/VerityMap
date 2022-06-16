@@ -10,7 +10,6 @@
 #include "../rolling_hash.hpp"
 #include "common/coverage_utils.hpp"
 #include "kmer_filter.hpp"
-#include "kmer_index_.hpp"
 #include "kmer_window.hpp"
 
 namespace veritymap::kmer_index::approx_kmer_indexer {
