@@ -11,12 +11,12 @@
 #include "../rolling_hash.hpp"
 #include "common/logging.hpp"
 #include "index_builders/approx_kmer_indexer_builder.hpp"
+#include "index_builders/exact_canon_kmer_indexer.hpp"
 #include "index_builders/exact_kmer_index_builder.hpp"
 #include "indexed_contigs.hpp"
 // #include "approx_canon_kmer_indexer_single_thread.hpp"
 // #include "approx_kmer_indexer.hpp"
 // #include "bloom/bloom.hpp"
-// #include "exact_canon_kmer_indexer.hpp"
 // #include "include/sketch/ccm.h"
 
 namespace veritymap::kmer_index {
@@ -38,6 +38,9 @@ class TargetIndexer {
     } else if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate) {
       pbuilder = std::make_unique<approx::ApproxKmerIndexBuilder>(nthreads, hasher, common_params, kmer_indexer_params,
                                                                   logger);
+    } else if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::exact_canon) {
+      pbuilder =
+          std::make_unique<exact_canon::ExactCanonKmerIndexer>(hasher, common_params, kmer_indexer_params, logger);
     }
     const std::string strategy_str = Config::KmerIndexerParams::strategy2str(kmer_indexer_params.strategy);
     logger.info() << "Getting kmer indexes. Strategy: " << strategy_str << std::endl;
