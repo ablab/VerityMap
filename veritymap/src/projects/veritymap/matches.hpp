@@ -74,6 +74,11 @@ class Matcher {
       const int64_t count_i = pos == nullptr ? 0 : pos->size();
       VERIFY(count64 >= count_i);
       if (not rep_kmer_bf.contains(hash) and count_i) {
+        if (count64 > config.max_rare_cnt_target) {
+          std::cout << count64 << " " << count_i << " " << hash << "\n";
+          for (auto x : *pos) { std::cout << x << " "; }
+          std::cout << std::endl;
+        }
         VERIFY(count64 <= config.max_rare_cnt_target);
         VERIFY(count64 <= std::numeric_limits<uint8_t>::max());
         const auto count = static_cast<uint8_t>(count64);

@@ -98,11 +98,11 @@ class ApproxKmerIndexBuilder : public AbstractKmerIndexBuilder {
 
       logger.info() << "Extending kmer index \n";
       kmer_window.Reset();
-      for (auto it = pos_hash_uniq.begin(); it != pos_hash_uniq.end(); ++it) {
+      auto it = pos_hash_uniq.begin();
+      for (; it != pos_hash_uniq.end(); ++it) {
         const auto [pos, hash, is_unique] = *it;
         kmer_window.Inc();
         if (kwh.hasNext() and kwh.pos - pos < window_size / 2) {
-          pos_hash_uniq = {it, pos_hash_uniq.end()};
           break;
         }
         if ((kmer_window.RegularFrac() < kmer_indexer_params.window_regular_density) or (pos % step_size == 0)) {
@@ -110,6 +110,7 @@ class ApproxKmerIndexBuilder : public AbstractKmerIndexBuilder {
           kmer2pos_single[hash].push_back(pos);
         }
       }
+      pos_hash_uniq = {it, pos_hash_uniq.end()};
 
       logger.info() << "Finished working with the chunk \n";
       if (not kwh.hasNext()) {
