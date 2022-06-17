@@ -77,7 +77,7 @@ for c in list(range(1,23))+['X']:
         ends[r.reference_end] += 1
 
     norarekmers_len = 0
-    with open("%s/%s/norarekmers.bed" % (outdir,chr_id)) as f:
+    with open("%s/%s/no_solid_kmers.bed" % (outdir,chr_id)) as f:
         for line in f:
             fs = line.split()
             norarekmers_len += int(fs[3])
