@@ -65,6 +65,8 @@ class KmerIndex {
     auto it = kmer2pos.at(i).find(hash);
     return it != kmer2pos.at(i).end() ? &(it->second) : nullptr;
   }
+
+  friend class HighFreqUniqueKmersFilterer;
 };
 
 std::ostream &operator<<(std::ostream &os, const KmerIndex &index) {
@@ -76,5 +78,95 @@ std::ostream &operator<<(std::ostream &os, const KmerIndex &index) {
   }
   return os;
 }
+
+class HighFreqUniqueKmersFilterer {
+  int64_t nthreads{1};
+  const RollingHash<Config::HashParams::htype> &hasher;
+  Config::CommonParams common_params;
+  Config::KmerIndexerParams kmer_indexer_params;
+  logging::Logger &logger;
+
+ public:
+  HighFreqUniqueKmersFilterer(const int64_t nthreads, const RollingHash<Config::HashParams::htype> &hasher,
+                              const Config::CommonParams &common_params,
+                              const Config::KmerIndexerParams &kmer_indexer_params, logging::Logger &logger)
+      : nthreads{nthreads},
+        hasher{hasher},
+        common_params{common_params},
+        kmer_indexer_params{kmer_indexer_params},
+        logger{logger} {}
+
+  void Filter(KmerIndex &kmer_index, const std::vector<Contig> &contigs) {
+    // ban unique k-mers in assembly that have unusually high coverage
+
+    logger.info() << "Counting unique k-mers from the target...\n";
+    std::unordered_map<Config::HashParams::htype, std::atomic<size_t>> unique_kmers;
+    for (const auto &[hash, cnt] : kmer_index.counter) {
+      if (cnt == 1) {
+        unique_kmers.emplace(hash, 0);
+      }
+    }
+    logger.info() << "There are " << unique_kmers.size() << " unique k-mers in the target\n";
+
+    std::function<void(const Contig &)> process_read = [&unique_kmers, this](const Contig &contig) {
+      if (contig.size() < hasher.k) {
+        return;
+      }
+      KWH<Config::HashParams::htype> kwh(hasher, contig.seq, 0);
+      while (true) {
+        if (!kwh.hasNext()) {
+          break;
+        }
+        kwh = kwh.next();
+        const Config::HashParams::htype fhash = kwh.get_fhash();
+        const Config::HashParams::htype rhash = kwh.get_rhash();
+        for (const Config::HashParams::htype hash : std::vector<Config::HashParams::htype>{fhash, rhash}) {
+          auto kmer_it = unique_kmers.find(hash);
+          if (kmer_it != unique_kmers.end()) {
+            ++(kmer_it->second);
+            break;
+          }
+        }
+      }
+    };
+    process_in_parallel(contigs, process_read, nthreads, true);
+
+    logger.info() << "Finished counting frequences of unique k-mers in the queries...\n";
+
+    auto [mean, stddev] = [&unique_kmers]() -> std::pair<double, double> {
+      auto it = unique_kmers.begin();
+      double mean = it->second;
+      double variance = 0;
+      for (int k = 1; it != unique_kmers.end(); ++it, ++k) {
+        double mean_pre = mean;
+        const auto &val = it->second;
+        mean += (val - mean) / k;
+        variance += (val - mean) * (val - mean_pre);
+      }
+      return {mean, std::sqrt(variance / unique_kmers.size())};
+    }();
+
+    logger.info() << "Mean (std) multiplicity of a unique k-mer = " << mean << " (" << stddev << ")\n";
+
+    const uint max_read_freq = mean + kmer_indexer_params.careful_upper_bnd_cov_mult * stddev;
+    logger.info() << "Max solid k-mer frequency in reads " << max_read_freq << "\n";
+
+    uint64_t n{0};
+    for (auto &[hash, cnt] : unique_kmers) {
+      if (cnt > max_read_freq) {
+        kmer_index.counter.erase(hash);
+        for (KmerIndex::Kmer2PosSingle &kmer2pos_single : kmer_index.kmer2pos) {
+          auto it = kmer2pos_single.find(hash);
+          if (it != kmer2pos_single.end()) {
+            kmer2pos_single.erase(it);
+            break;
+          }
+        }
+        ++n;
+      }
+    }
+    logger.info() << "Filtered " << n << " high multiplicity k-mers\n";
+  }
+};
 
 }// End namespace veritymap::kmer_index

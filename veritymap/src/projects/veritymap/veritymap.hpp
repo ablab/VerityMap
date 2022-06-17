@@ -61,7 +61,7 @@ class VerityMap {
 
     kmer_index::TargetIndexer target_indexer(config.common_params, config.kmer_indexer_params, logger, hasher);
     const indexed_contigs::IndexedContigs indexed_targets =
-        target_indexer.GetIndexedTargets(targets, queries, index_path, outdir);
+        target_indexer.GetIndexedTargets(targets, queries, index_path, outdir, nthreads);
 
     {
       const auto no_solid_kmers_fn = outdir / "no_solid_kmers.bed";

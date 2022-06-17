@@ -8,10 +8,10 @@
 
 #include "../config/config.hpp"
 #include "../rolling_hash.hpp"
-#include "approx_kmer_indexer.hpp"
 #include "common/coverage_utils.hpp"
+#include "index_builders/approx_kmer_indexer_builder.hpp"
+#include "index_builders/kmer_window.hpp"
 #include "kmer_filter_canon.hpp"
-#include "kmer_window.hpp"
 
 namespace veritymap::kmer_index::approx_canon_kmer_indexer {
 

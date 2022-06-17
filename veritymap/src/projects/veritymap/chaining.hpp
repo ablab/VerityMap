@@ -40,7 +40,7 @@ struct Chain {
   Chain &operator=(Chain &&) = delete;
 };
 
-inline bool operator<(const Chain &lhs, const Chain &rhs) { lhs.score < rhs.score; }
+inline bool operator<(const Chain &lhs, const Chain &rhs) { return lhs.score < rhs.score; }
 inline bool operator>(const Chain &lhs, const Chain &rhs) { return operator<(rhs, lhs); }
 inline bool operator<=(const Chain &lhs, const Chain &rhs) { return !operator>(lhs, rhs); }
 inline bool operator>=(const Chain &lhs, const Chain &rhs) { return !operator<(lhs, rhs); }

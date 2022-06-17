@@ -9,7 +9,7 @@
 #include "../../rolling_hash.hpp"
 #include "kmer_index_builder.hpp"
 
-namespace veritymap::kmer_index_builder {
+namespace veritymap::kmer_index_builder::exact {
 
 class ExactKmerIndexBuilder : public AbstractKmerIndexBuilder {
   [[nodiscard]] std::vector<kmer_index::KmerIndex::KmerCounter> GetCounters(const std::vector<Contig> &ctgs) const {
@@ -77,12 +77,11 @@ class ExactKmerIndexBuilder : public AbstractKmerIndexBuilder {
                         const Config::KmerIndexerParams &kmer_indexer_params, logging::Logger &logger)
       : AbstractKmerIndexBuilder{/*nthreads=*/1, hasher, common_params, kmer_indexer_params, logger} {}
 
-  [[nodiscard]] kmer_index::KmerIndex Build(const std::vector<Contig> &targets,
-                                            const std::vector<Contig> &queries) const override {
-    std::vector<kmer_index::KmerIndex::KmerCounter> counters = GetCounters(targets);
+  [[nodiscard]] kmer_index::KmerIndex Build(const std::vector<Contig> &contigs) const override {
+    std::vector<kmer_index::KmerIndex::KmerCounter> counters = GetCounters(contigs);
     std::unordered_map<Config::HashParams::htype, std::unordered_set<size_t>> hash2seqs = Hash2Seqs(counters);
-    return Counter2Index(targets, hash2seqs, counters);
+    return Counter2Index(contigs, hash2seqs, counters);
   }
 };
 
-}// End namespace veritymap::kmer_index_builder
+}// End namespace veritymap::kmer_index_builder::exact

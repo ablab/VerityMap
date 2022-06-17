@@ -10,9 +10,9 @@
 #include "../config/config.hpp"
 #include "../rolling_hash.hpp"
 #include "common/logging.hpp"
+#include "index_builders/approx_kmer_indexer_builder.hpp"
 #include "index_builders/exact_kmer_index_builder.hpp"
 #include "indexed_contigs.hpp"
-// #include "approx_canon_kmer_indexer.hpp"
 // #include "approx_canon_kmer_indexer_single_thread.hpp"
 // #include "approx_kmer_indexer.hpp"
 // #include "bloom/bloom.hpp"
@@ -29,24 +29,24 @@ class TargetIndexer {
   logging::Logger &logger;
   const RollingHash<Config::HashParams::htype> &hasher;
 
-  KmerIndex ConstructIndex(const std::vector<Contig> &targets, const std::vector<Contig> &queries) {
+  KmerIndex ConstructIndex(const std::vector<Contig> &targets, const std::vector<Contig> &queries,
+                           const int64_t nthreads) {
     using namespace kmer_index_builder;
+    std::unique_ptr<AbstractKmerIndexBuilder> pbuilder;
     if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::exact) {
-      logger.info() << "Getting exact kmer indexes..." << std::endl;
-      ExactKmerIndexBuilder builder(hasher, common_params, kmer_indexer_params, logger);
-      KmerIndex index = builder.Build(targets, queries);
-      logger.info() << "Finished getting exact kmer indexes" << std::endl;
-      return index;
+      pbuilder = std::make_unique<exact::ExactKmerIndexBuilder>(hasher, common_params, kmer_indexer_params, logger);
+    } else if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate) {
+      pbuilder = std::make_unique<approx::ApproxKmerIndexBuilder>(nthreads, hasher, common_params, kmer_indexer_params,
+                                                                  logger);
     }
+    const std::string strategy_str = Config::KmerIndexerParams::strategy2str(kmer_indexer_params.strategy);
+    logger.info() << "Getting kmer indexes. Strategy: " << strategy_str << std::endl;
+    KmerIndex index = pbuilder->Build(targets);
+    HighFreqUniqueKmersFilterer filterer(nthreads, hasher, common_params, kmer_indexer_params, logger);
+    filterer.Filter(index, queries);
+    logger.info() << "Finished getting kmer indexes" << std::endl;
+    return index;
     /*
-    if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate) {
-      logger.info() << "Getting approximate kmer indexes..." << std::endl;
-
-      const approx_kmer_indexer::ApproxKmerIndexer kmer_indexer(nthreads, hasher, common_params, kmer_indexer_params);
-      KmerIndexes kmers_indexes = kmer_indexer.extract(targets, queries, logger);
-      logger.info() << "Finished getting approximate kmer indexes" << std::endl;
-      return kmers_indexes;
-    }
     if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate_canon) {
       logger.info() << "Getting approximate kmer indexes (canonical variant)..." << std::endl;
       const approx_canon_kmer_indexer::ApproxCanonKmerIndexer kmer_indexer(nthreads, hasher, common_params,
@@ -83,16 +83,16 @@ class TargetIndexer {
   indexed_contigs::IndexedContigs GetIndexedTargets(const std::vector<Contig> &targets,
                                                     const std::vector<Contig> &queries,
                                                     const std::optional<std::filesystem::path> &index_path,
-                                                    const std::filesystem::path &outdir) {
+                                                    const std::filesystem::path &outdir, const int64_t nthreads) {
     using htype = Config::HashParams::htype;
 
     const auto save_index_path = outdir / "kmer_indexes.tsv";
-    auto index = [&index_path, &targets, &queries, this]() -> KmerIndex {
+    auto index = [&index_path, &targets, &queries, &nthreads, this]() -> KmerIndex {
       if (index_path) {
         logger.info() << "Reading index from " << index_path.value() << "\n";
         return {targets, index_path.value()};
       }
-      return ConstructIndex(targets, queries);
+      return ConstructIndex(targets, queries, nthreads);
     }();
 
     std::ofstream index_os(save_index_path);
