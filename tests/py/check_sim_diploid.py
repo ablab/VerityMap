@@ -9,14 +9,14 @@ ANSWER_DIR = sys.argv[2]
 real_pos = dict()
 i = 1
 read_scores = dict()
-with open(os.path.join(ANSWER_DIR, "chrX_ext_0001.txt")) as f:
+with open(os.path.join(ANSWER_DIR, "maf_first.txt")) as f:
     for line in f:
         read_name = "S1_%d" % i
         read_name, ref_s = line.split()[:2]
         real_pos[read_name] = int(ref_s)
         i += 1
 i = 1
-with open(os.path.join(ANSWER_DIR, "chrX_hg002_0001.txt")) as f:
+with open(os.path.join(ANSWER_DIR, "maf_second.txt")) as f:
     for line in f:
         read_name, ref_s = line.split()[:2]
         read_name = "S2_%d" % i
