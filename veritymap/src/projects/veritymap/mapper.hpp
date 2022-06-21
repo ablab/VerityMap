@@ -44,6 +44,11 @@ class Mapper {
 
     if (chains.empty())
       return std::nullopt;
+
+    int64_t top_range = chains.front().Range(config.common_params.k);
+    if (top_range < config.chaining_params.min_chain_range)
+      return std::nullopt;
+
     if (chains.size() == 1)
       return std::move(chains.front());
 

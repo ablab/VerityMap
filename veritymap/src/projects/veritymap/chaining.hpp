@@ -38,6 +38,12 @@ struct Chain {
   Chain &operator=(Chain) = delete;
   Chain(Chain &&) = default;
   Chain &operator=(Chain &&) = delete;
+
+  [[nodiscard]] int64_t Range(const int64_t k) const {
+    const int64_t query_range = matches.back().query_pos + k - matches.front().query_pos;
+    const int64_t target_range = matches.back().target_pos + k - matches.front().target_pos;
+    return std::max(query_range, target_range);
+  }
 };
 
 inline bool operator<(const Chain &lhs, const Chain &rhs) { return lhs.score < rhs.score; }
@@ -125,12 +131,6 @@ class Chainer {
       }
       VERIFY(not chain_matches.empty());
       const score_type score = scores[en] - scores[st];
-      const size_t chain_range = [&chain_matches, this] {
-        const size_t query_range = chain_matches.back().query_pos + common_params.k - chain_matches.front().query_pos;
-        const size_t target_range =
-            chain_matches.back().target_pos + common_params.k - chain_matches.front().target_pos;
-        return std::max(query_range, target_range);
-      }();
       const int uniq_kmers = [&chain_matches] {
         int uniq_kmers{0};
         for (const auto &match : chain_matches) {
@@ -140,8 +140,7 @@ class Chainer {
         }
         return uniq_kmers;
       }();
-      if ((score >= chaining_params.min_score) and (chain_range >= chaining_params.min_chain_range)
-          and (uniq_kmers >= chaining_params.min_uniq_kmers)) {
+      if ((score >= chaining_params.min_score) and (uniq_kmers >= chaining_params.min_uniq_kmers)) {
         scored_matches_vec.emplace_back(std::move(chain_matches), score);
       }
     }
