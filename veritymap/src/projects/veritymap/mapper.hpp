@@ -45,15 +45,15 @@ class Mapper {
     if (chains.empty())
       return std::nullopt;
 
-    int64_t top_range = chains.front().Range(config.common_params.k);
+    auto pr_it = std::max_element(chains.begin(), chains.end(),
+                                  [](const auto &lhs, const auto &rhs) { return lhs.score < rhs.score; });
+    int64_t top_range = pr_it->Range(config.common_params.k);
     if (top_range < config.chaining_params.min_chain_range)
       return std::nullopt;
 
     if (chains.size() == 1)
       return std::move(chains.front());
 
-    auto pr_it = std::max_element(chains.begin(), chains.end(),
-                                  [](const auto &lhs, const auto &rhs) { return lhs.score < rhs.score; });
     Config::ChainingParams::score_type sc_score = 0;
     for (auto it = chains.begin(); it != chains.end(); ++it) {
       if (it == pr_it)
