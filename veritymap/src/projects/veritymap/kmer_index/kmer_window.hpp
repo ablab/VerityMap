@@ -58,7 +58,9 @@ class KmerWindow {
   void Reset() {
     next_it = pos_hash_uniq.cbegin();
     cur_it = pos_hash_uniq.cbegin();
-    IncRight();
+    if (not pos_hash_uniq.empty()) {
+      IncRight();
+    }
   }
 };
 }// End namespace veritymap::kmer_index::kmer_window
