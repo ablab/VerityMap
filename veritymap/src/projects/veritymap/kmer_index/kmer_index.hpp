@@ -159,6 +159,7 @@ class HighFreqUniqueKmersFilterer {
           auto it = kmer2pos_single.find(hash);
           if (it != kmer2pos_single.end()) {
             kmer2pos_single.erase(it);
+            kmer_index.counter.erase(hash);
             break;
           }
         }
