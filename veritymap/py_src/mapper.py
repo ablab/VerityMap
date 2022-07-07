@@ -21,9 +21,7 @@ def make_mapper():
         return
 
     print('Compiling mapper...')
-    return_code = subprocess.call(['make', '-C', source_dir], stdout=open("make.log","w"), stderr=open("make.err","w"))
-    if return_code != 0:
-        raise
+    subprocess.check_call(['make', '-C', source_dir], stdout=open("make.log", "w"), stderr=open("make.err", "w"))
     print('Mapper is compiled successful!')
 
 
@@ -39,7 +37,7 @@ def run_mapper(assembly, reads_fname, out_dir, threads, datatype, is_careful):
            '--target', assembly.fname, '--queries', reads_fname,
            '-o', join(out_dir, 'veritymap'), '-t', str(threads), '--config', datatype]
     if is_careful: cmd += ['--careful']
-    subprocess.call(cmd)
+    subprocess.check_call(cmd)
     output_fname = join(out_dir, 'veritymap', 'chains.tsv')
     sam_fname = join(out_dir, 'veritymap', 'alignments.sam')
     shutil.move(output_fname, assembly.chains_fname)
