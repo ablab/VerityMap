@@ -2,6 +2,8 @@
 // Created by Andrey Bzikadze on 03/31/22.
 //
 
+#include <optional>
+
 namespace veritymap::mapper {
 
 class Mapper {
