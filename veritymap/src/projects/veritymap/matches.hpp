@@ -17,6 +17,7 @@ struct Match {
   uint8_t target_freq{0};// TODO Change to "is_unique"
 
   [[nodiscard]] bool is_unique() const { return target_freq == 1; }
+  [[nodiscard]] bool is_dup() const { return target_freq == 2; }
 };
 
 inline bool operator<(const Match& lhs, const Match& rhs) { return lhs.target_pos < rhs.target_pos; }
