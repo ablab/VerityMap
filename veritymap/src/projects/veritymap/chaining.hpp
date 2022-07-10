@@ -293,10 +293,11 @@ std::string chain2samrecord(const Chain &chain, const bool is_primary, const Con
   const Sequence target_seq =
       chain.target.seq.Subseq(intervals.front().t_st, intervals.front().t_st + cigar.target_length());
   const size_t start_pos = intervals.front().t_st + 1 + left_trim;
+  int quality = is_primary ? 60 : 0;
   const std::string read_flag = chain.query_strand == dna_strand::Strand::forward ? "0" : "16";
   std::stringstream s;
-  s << chain.query.id << "\t" << read_flag << "\t" << chain.target.id << "\t" << start_pos << "\t60\t" << cigar
-    << "\t*\t0\t0\t" << query_seq << "\t*\tNM:i:" << cigar.nmismatches(target_seq, query_seq);
+  s << chain.query.id << "\t" << read_flag << "\t" << chain.target.id << "\t" << start_pos << "\t" << quality << "\t"
+    << cigar << "\t*\t0\t0\t" << query_seq << "\t*\tNM:i:" << cigar.nmismatches(target_seq, query_seq);
   return s.str();
 }
 

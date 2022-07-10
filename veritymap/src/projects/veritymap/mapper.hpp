@@ -33,7 +33,7 @@ class Mapper {
     return chains;
   }
 
-  [[nodiscard]] std::optional<chaining::Chain> MapSingleQuery(
+  [[nodiscard]] std::vector<chaining::Chain> MapSingleQuery(
       const Contig &query, const indexed_contigs::IndexedContigs &indexed_targets) const {
     using score_type = typename Config::ChainingParams::score_type;
 
@@ -43,28 +43,45 @@ class Mapper {
     for (chaining::Chain &chain : chains_r) { chains.emplace_back(std::move(chain)); }
 
     if (chains.empty())
-      return std::nullopt;
+      return {};
 
     auto pr_it = std::max_element(chains.begin(), chains.end(),
                                   [](const auto &lhs, const auto &rhs) { return lhs.score < rhs.score; });
     int64_t top_range = pr_it->Range(config.common_params.k);
     if (top_range < config.chaining_params.min_chain_range)
-      return std::nullopt;
+      return {};
 
-    if (chains.size() == 1)
-      return std::move(chains.front());
+    // auto count = [](decltype(pr_it) it) -> std::tuple<int, int, int> {
+    //   int uniq{0}, dup{0}, rare{0};
+    //   for (const auto &match : it->matches) {
+    //     if (match.is_unique())
+    //       ++uniq;
+    //     else if (match.target_freq == 2)
+    //       ++dup;
+    //     else
+    //       ++rare;
+    //   }
+    //   return {uniq, dup, rare};
+    // };
+    // if (query.id == "S2_18802")
+    // {
+    //   auto count_pr = count(pr_it);
+    //   auto count_sc = count(sc_it);
+    //   std::cout << query.id << "\n";
+    //   bool first = query.id[1] == '1';
+    //   bool top_correct = first == (pr_it->target.id.substr(5, 5) == "chm13");
+    //   std::cout << pr_it -> target.id.substr(5, 5) << " " << pr_it -> matches.front().target_pos << " " << pr_it -> score << " " << std::get<0>(count_pr) << " " << std::get<1>(count_pr) << " " << std::get<2>(count_pr) << " " << (top_correct ? "*" : "") << '\n';
+    //   std::cout << sc_it -> target.id.substr(5, 5) << " " << sc_it -> matches.front().target_pos << " " << sc_it -> score << " " << std::get<0>(count_sc) << " " << std::get<1>(count_sc) << " " << std::get<2>(count_sc) << " " << (not top_correct ? "*" : "") << '\n';
+    //   std::cout << "\n";
+    // }
 
-    Config::ChainingParams::score_type sc_score = 0;
-    for (auto it = chains.begin(); it != chains.end(); ++it) {
-      if (it == pr_it)
-        continue;
-      if (it->score > sc_score)
-        sc_score = it->score;
+    std::vector<chaining::Chain> new_chains;
+    for (chaining::Chain &chain : chains) {
+      if (chain.score > pr_it->score * config.chaining_params.max_top_score_prop) {
+        new_chains.emplace_back(std::move(chain));
+      }
     }
-    const double top_score_prop = static_cast<double>(sc_score) / pr_it->score;
-    if (top_score_prop < config.chaining_params.max_top_score_prop)
-      return std::move(*pr_it);
-    return std::nullopt;
+    return new_chains;
   }
 
  public:
@@ -97,15 +114,18 @@ class Mapper {
 
     std::function<void(const Contig &query)> align_read = [&indexed_targets, &chainsMutex, &chains_os, &sam_os,
                                                            this](const Contig &query) {
-      std::optional<chaining::Chain> chain = MapSingleQuery(query, indexed_targets);
+      std::vector<chaining::Chain> chains = MapSingleQuery(query, indexed_targets);
 
-      if (chain.has_value()) {
-        std::string sam_record =
-            chaining::chain2samrecord(chain.value(), config.common_params, config.chain2sam_params);
-        chainsMutex.lock();
-        chains_os << chain.value();
-        sam_os << sam_record << "\n";
-        chainsMutex.unlock();
+      if (not chains.empty()) {
+        bool is_primary = chains.size() == 1;
+        for (const chaining::Chain &chain : chains) {
+          std::string sam_record =
+              chaining::chain2samrecord(chain, is_primary, config.common_params, config.chain2sam_params);
+          chainsMutex.lock();
+          chains_os << chain;
+          sam_os << sam_record << "\n";
+          chainsMutex.unlock();
+        }
       }
     };
 
