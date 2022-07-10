@@ -49,6 +49,7 @@ Config Config::load_config_file(const std::filesystem::path& config_fn) {
                                          stoull(m.at("max_supp_dist_diff")),
                                          stoi(m.at("min_uniq_kmers")),
                                          stod(m.at("match_score_unique")),
+                                         stod(m.at("match_score_dup")),
                                          stod(m.at("match_score_rare"))};
   Config::Chain2SAMParams chain_2_sam_params{stod(m.at("min_end_ident")), ksw_2_params};
 

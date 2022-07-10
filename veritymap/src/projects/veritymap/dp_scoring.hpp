@@ -40,8 +40,9 @@ class DPScorer {
     for (auto it = matches.cbegin(); it != matches.cend(); ++it) {
       const matches::Match &match{*it};
 
-      const score_type freq_weight =
-          match.is_unique() ? chaining_params.match_score_unique : chaining_params.match_score_rare;
+      const score_type freq_weight = match.is_unique() ? chaining_params.match_score_unique
+          : match.is_dup()                             ? chaining_params.match_score_dup
+                                                       : chaining_params.match_score_rare;
 
       score_type score{freq_weight};
       size_t backtrack{def_backtrack};

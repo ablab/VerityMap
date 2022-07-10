@@ -105,6 +105,7 @@ struct Config {
     int min_uniq_kmers;
 
     score_type match_score_unique;
+    score_type match_score_dup;
     score_type match_score_rare;
   };
   ChainingParams chaining_params;
