@@ -14,7 +14,7 @@
 
 int main(int argc, char** argv) {
   CLParser parser{{"output-dir=", "target=", "queries=none", "threads=40", "only-index", "careful", "diploid",
-                   "index=none", "config=hifi"},
+                   "index=none", "config=hifi-haploid-complete"},
                   {},
                   {"o=output-dir", "t=threads"}};
   parser.parseCL(argc, argv);
@@ -75,10 +75,14 @@ int main(int argc, char** argv) {
   const std::filesystem::path config_fn = [&parser, &logger, &binary_path] {
     std::string config = parser.getValue("config");
     std::filesystem::path dirpath = binary_path.parent_path();
-    if (config == "hifi") {
-      return dirpath / "config/config_tm2_hifi.tsv";
-    } else if (config == "ont") {
-      return dirpath / "config/config_tm2_ont.tsv";
+    if (config == "hifi-haploid-complete") {
+      return dirpath / "config/config_hifi_haploid_complete.tsv";
+    } else if (config == "hifi-haploid") {
+      return dirpath / "config/config_hifi_haploid.tsv";
+    } else if (config == "hifi-diploid") {
+      return dirpath / "config/config_hifi_diploid.tsv";
+    } else if (config == "ont-haploid-complete") {
+      return dirpath / "config/config_ont_haploid_complete.tsv";
     }
     return static_cast<std::filesystem::path>(config);
   }();
