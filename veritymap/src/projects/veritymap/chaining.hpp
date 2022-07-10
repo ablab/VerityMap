@@ -124,13 +124,14 @@ class Chainer {
         end_chain[st] = 1;
         st = backtracks[st];
       }
+      chain_matches.push_back(matches[st]);
       std::reverse(chain_matches.begin(), chain_matches.end());
       for (size_t i = 1; i < chain_matches.size(); ++i) {
         VERIFY(chain_matches[i].query_pos > chain_matches[i - 1].query_pos);
         VERIFY(chain_matches[i].target_pos > chain_matches[i - 1].target_pos);
       }
       VERIFY(not chain_matches.empty());
-      const score_type score = scores[en] - scores[st];
+      const score_type score = scores[en] - (backtracks[st] == def_backtrack ? 0 : scores[backtracks[st]]);
       const int uniq_kmers = [&chain_matches] {
         int uniq_kmers{0};
         for (const auto &match : chain_matches) {
@@ -257,7 +258,7 @@ std::vector<cigar_utils::Cigar> intervals2cigar(const SemiIntervals &intervals, 
   return cigars;
 }
 
-std::string chain2samrecord(const Chain &chain, const Config::CommonParams &common_params,
+std::string chain2samrecord(const Chain &chain, const bool is_primary, const Config::CommonParams &common_params,
                             const Config::Chain2SAMParams &chain2sam_params) {
   const SemiIntervals intervals = get_intervals(chain, common_params.k);
 
