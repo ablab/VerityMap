@@ -104,11 +104,15 @@ class Chainer {
         end_chain[i] = 1;
       }
     }
-    // for (size_t i = 0; i < scores.size(); ++i) {
-    //   std::cout << i << " " << matches[i].target_pos << " " << matches[i].query_pos << " " << matches[i].target_freq << " "
-    //             << scores[i] << " " << backtracks[i] << "\n";
+    // if (query.id == "")
+    // {
+    //   std::cout << target.id << "\n";
+    //   for (size_t i = 0; i < scores.size(); ++i) {
+    //     std::cout << i << " " << matches[i].target_pos << " " << matches[i].query_pos << " "
+    //               << int(matches[i].target_freq) << " " << scores[i] << " " << backtracks[i] << "\n";
+    //   }
+    //   std::cout << "\n";
     // }
-    // std::cout << "\n";
 
     using ScoredMatches = std::pair<matches::Matches, score_type>;
 
