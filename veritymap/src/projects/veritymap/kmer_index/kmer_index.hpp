@@ -29,13 +29,13 @@ class KmerIndex {
     std::unordered_map<std::string, int64_t> name2index;
     for (auto it = ctgs.begin(); it != ctgs.end(); ++it) { name2index.emplace(it->id, it - ctgs.begin()); }
     std::string name;
-    int64_t pos;
+    int64_t pos{0}, cnt{0};
     Config::HashParams::htype hash;
     kmer2pos.resize(name2index.size());
     std::ifstream is(input_fn);
-    while (is >> name >> pos >> hash) {
-      ++counter[hash];
-      kmer2pos[name2index[name]][hash].push_back(pos);
+    while (is >> name >> pos >> hash >> cnt) {
+      counter[hash] = cnt;
+      kmer2pos[name2index.at(name)][hash].push_back(pos);
     }
   }
 
@@ -73,7 +73,9 @@ std::ostream &operator<<(std::ostream &os, const KmerIndex &index) {
   for (auto it = index.kmer2pos.cbegin(); it != index.kmer2pos.cend(); ++it) {
     const Contig &contig = index.ctgs.at(it - index.kmer2pos.cbegin());
     for (const auto &[hash, pos] : *it) {
-      for (const int64_t p : pos) { os << contig.id << "\t" << p << "\t" << hash << "\n"; }
+      for (const int64_t p : pos) {
+        os << contig.id << "\t" << p << "\t" << hash << "\t" << index.counter.at(hash) << "\n";
+      }
     }
   }
   return os;
