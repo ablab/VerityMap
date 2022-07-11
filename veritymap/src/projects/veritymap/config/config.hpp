@@ -35,7 +35,7 @@ struct Config {
     size_t k_window_size;
     double window_regular_density;
 
-    enum class Strategy { exact, approximate, approximate_canon, exact_canon, approximate_canon_single_thread };
+    enum class Strategy { exact, approximate, approximate_canon, exact_canon };
     Strategy strategy;
     static std::string strategy2str(const Strategy& strategy) {
       if (strategy == Strategy::exact)
@@ -44,23 +44,18 @@ struct Config {
         return "approximate";
       if (strategy == Strategy::approximate_canon)
         return "approximate_canon";
-      if (strategy == Strategy::exact_canon)
-        return "exact_canon";
-      VERIFY(strategy == Strategy::approximate_canon_single_thread);
-      return "approximate_canon_single_thread";
+      VERIFY(strategy == Strategy::exact_canon);
+      return "exact_canon";
     }
     static Strategy str2strategy(const std::string& str) {
-      VERIFY(str == "exact" or str == "approximate" or str == "approximate_canon" or str == "exact_canon"
-             or str == "approximate_canon_single_thread");
+      VERIFY(str == "exact" or str == "approximate" or str == "approximate_canon" or str == "exact_canon");
       if (str == "exact")
         return Strategy::exact;
       if (str == "approximate")
         return Strategy::approximate;
       if (str == "approximate_canon")
         return Strategy::approximate_canon;
-      if (str == "exact_canon")
-        return Strategy::exact_canon;
-      return Strategy::approximate_canon_single_thread;
+      return Strategy::exact_canon;
     }
 
     struct ApproximateKmerIndexerParams {

@@ -113,6 +113,16 @@ class KmerMinimizerWindow {
     return init_window;
   }
 
+  static std::vector<FreqHash> GetInitWindow(KWH<Config::HashParams::htype> &kwh, const int64_t window_size,
+                                             const sketch::cm::ccm_t &cms) {
+    std::vector<FreqHash> init_window;
+    for (int i = 0; i < window_size; ++i, kwh = kwh.next()) {
+      init_window.push_back({static_cast<int64_t>(cms.est_count(kwh.hash())), kwh.hash(), kwh.get_fhash()});
+      VERIFY(kwh.hasNext());
+    }
+    return init_window;
+  }
+
   void PushBack(const int32_t freq, const Config::HashParams::htype hash, const Config::HashParams::htype fhash,
                 const int64_t pos) {
     queue.PushBack(pos, {freq, hash, fhash});
@@ -129,6 +139,9 @@ class KmerMinimizerWindow {
   KmerMinimizerWindow(KWH<Config::HashParams::htype> &kwh, const int64_t window_size,
                       const kmer_index::KmerIndex::KmerCounter &counter)
       : KmerMinimizerWindow(GetInitWindow(kwh, window_size, counter)) {}
+
+  KmerMinimizerWindow(KWH<Config::HashParams::htype> &kwh, const int64_t window_size, const sketch::cm::ccm_t &cms)
+      : KmerMinimizerWindow(GetInitWindow(kwh, window_size, cms)) {}
 
   void Add(const int32_t freq, const Config::HashParams::htype hash, const Config::HashParams::htype fhash,
            const int64_t pos) {

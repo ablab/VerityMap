@@ -10,6 +10,7 @@
 #include "../config/config.hpp"
 #include "../rolling_hash.hpp"
 #include "common/logging.hpp"
+#include "index_builders/approx_canon_kmer_indexer_single_thread.hpp"
 #include "index_builders/approx_kmer_indexer_builder.hpp"
 #include "index_builders/exact_canon_kmer_indexer.hpp"
 #include "index_builders/exact_kmer_index_builder.hpp"
@@ -41,6 +42,9 @@ class TargetIndexer {
     } else if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::exact_canon) {
       pbuilder =
           std::make_unique<exact_canon::ExactCanonKmerIndexer>(hasher, common_params, kmer_indexer_params, logger);
+    } else if (kmer_indexer_params.strategy == Config::KmerIndexerParams::Strategy::approximate_canon) {
+      pbuilder =
+          std::make_unique<approx_canon::ApproxCanonKmerIndexer>(hasher, common_params, kmer_indexer_params, logger);
     }
     const std::string strategy_str = Config::KmerIndexerParams::strategy2str(kmer_indexer_params.strategy);
     logger.info() << "Getting kmer indexes. Strategy: " << strategy_str << std::endl;
