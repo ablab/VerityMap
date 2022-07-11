@@ -30,6 +30,9 @@ with open(chains_file) as f:
         fs = line.split()
         if 'Aln' not in fs[0]:
             continue
+        is_primary = bool(int(fs[10]))
+        if not is_primary:
+            continue
         read_name, ref_name, read_s, read_e, read_len, ref_s, ref_e = fs[1:8]
         if 'S2' in read_name and 'hg' not in ref_name:
             d += 1
