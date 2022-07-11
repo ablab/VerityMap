@@ -18,6 +18,7 @@ struct Chain {
   const dna_strand::Strand query_strand;
   matches::Matches matches;
   Config::ChainingParams::score_type score;
+  bool is_primary{false};
 
   [[nodiscard]] size_t query_size() const { return query.size(); }
 
@@ -44,6 +45,8 @@ struct Chain {
     const int64_t target_range = matches.back().target_pos + k - matches.front().target_pos;
     return std::max(query_range, target_range);
   }
+
+  void SetPrimary() { is_primary = true; }
 };
 
 inline bool operator<(const Chain &lhs, const Chain &rhs) { return lhs.score < rhs.score; }
@@ -55,8 +58,8 @@ std::ostream &operator<<(std::ostream &os, const Chain &chain) {
   const std::string strand = dna_strand::strand2str(chain.query_strand);
   os << strand << "Aln " << chain.query.id << " " << chain.target.id << " " << chain.query_st() << " "
      << chain.query_en()// TODO add k
-     << " " << chain.query_size() << " " << chain.target_st() << " " << chain.target_en() << " score " << chain.score
-     << " num kmers " << size(chain.matches) << "\n";
+     << " " << chain.query_size() << " " << chain.target_st() << " " << chain.target_en() << " " << chain.score << " "
+     << size(chain.matches) << " " << chain.is_primary << "\n";
   os << "Chain\n" << chain.matches;
   return os;
 }
@@ -262,7 +265,7 @@ std::vector<cigar_utils::Cigar> intervals2cigar(const SemiIntervals &intervals, 
   return cigars;
 }
 
-std::string chain2samrecord(const Chain &chain, const bool is_primary, const Config::CommonParams &common_params,
+std::string chain2samrecord(const Chain &chain, const Config::CommonParams &common_params,
                             const Config::Chain2SAMParams &chain2sam_params) {
   const SemiIntervals intervals = get_intervals(chain, common_params.k);
 
@@ -297,7 +300,7 @@ std::string chain2samrecord(const Chain &chain, const bool is_primary, const Con
   const Sequence target_seq =
       chain.target.seq.Subseq(intervals.front().t_st, intervals.front().t_st + cigar.target_length());
   const size_t start_pos = intervals.front().t_st + 1 + left_trim;
-  int quality = is_primary ? 60 : 0;
+  int quality = chain.is_primary ? 60 : 0;
   const std::string read_flag = chain.query_strand == dna_strand::Strand::forward ? "0" : "16";
   std::stringstream s;
   s << chain.query.id << "\t" << read_flag << "\t" << chain.target.id << "\t" << start_pos << "\t" << quality << "\t"

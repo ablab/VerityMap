@@ -81,6 +81,9 @@ class Mapper {
         new_chains.emplace_back(std::move(chain));
       }
     }
+    if (new_chains.size() == 1) {
+      new_chains.front().SetPrimary();
+    }
     return new_chains;
   }
 
@@ -117,10 +120,8 @@ class Mapper {
       std::vector<chaining::Chain> chains = MapSingleQuery(query, indexed_targets);
 
       if (not chains.empty()) {
-        bool is_primary = chains.size() == 1;
         for (const chaining::Chain &chain : chains) {
-          std::string sam_record =
-              chaining::chain2samrecord(chain, is_primary, config.common_params, config.chain2sam_params);
+          std::string sam_record = chaining::chain2samrecord(chain, config.common_params, config.chain2sam_params);
           chainsMutex.lock();
           chains_os << chain;
           sam_os << sam_record << "\n";
