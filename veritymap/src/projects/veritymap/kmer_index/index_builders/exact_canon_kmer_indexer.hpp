@@ -5,6 +5,7 @@
 #pragma once
 
 #include "kmer_index_builder.hpp"
+#include "kmer_window.hpp"
 
 namespace veritymap::kmer_index_builder::exact_canon {
 
@@ -34,19 +35,23 @@ class ExactCanonKmerIndexer : public AbstractKmerIndexBuilder {
     kmer_index::KmerIndex::Kmer2Pos kmer2pos;
     for (const Contig &contig : contigs) {
       auto &k2p{kmer2pos.emplace_back()};
-      if (contig.size() < hasher.k) {
+      if (contig.size() < hasher.k + kmer_indexer_params.k_step_size) {
         continue;
       }
       KWH<Config::HashParams::htype> kwh(hasher, contig.seq, 0);
-      while (true) {
-        if (full_counter.at(kwh.hash()) <= kmer_indexer_params.max_rare_cnt_target) {
-          counter[kwh.get_fhash()] = full_counter.at(kwh.hash());
-          k2p[kwh.get_fhash()].emplace_back(kwh.pos);
+      int64_t latest_pos{0};
+      for (kmer_index::kmer_window::KmerMinimizerWindow window(kwh, kmer_indexer_params.k_step_size, full_counter);
+           kwh.hasNext();
+           kwh = kwh.next(), window.Add(full_counter.at(kwh.hash()), kwh.hash(), kwh.get_fhash(), kwh.pos)) {
+        const int64_t cur_pos = window.GetMinimizerPos();
+        if (cur_pos != latest_pos) {
+          auto [freq, hash, fhash] = window.GetMinimizer();
+          if (freq <= kmer_indexer_params.max_rare_cnt_target) {
+            counter[fhash] = full_counter.at(hash);
+            k2p[fhash].emplace_back(kwh.pos);
+            latest_pos = cur_pos;
+          }
         }
-        if (!kwh.hasNext()) {
-          break;
-        }
-        kwh = kwh.next();
       }
     }
 

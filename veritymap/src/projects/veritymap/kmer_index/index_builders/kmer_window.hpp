@@ -61,4 +61,82 @@ class KmerWindow {
     IncRight();
   }
 };
+
+template<class T, class Compare = std::less<T>>
+class MinQueue {
+  // elements in vector with deque indixes are non-increasing
+  std::deque<std::pair<int64_t, T>> deque;
+  Compare value_compare;
+  int64_t first{0};
+
+ public:
+  void PushBack(const int64_t next_pos, const T &next_el) {
+    while (not deque.empty() and value_compare(next_el, deque.back().second)) { deque.pop_back(); }
+    deque.emplace_back(next_pos, next_el);
+  }
+
+  [[nodiscard]] int64_t GetMinIndex() const { return deque.front().first; }
+  [[nodiscard]] T GetMin() const { return deque.front().second; }
+  [[nodiscard]] std::pair<int64_t, T> GetMinPair() const { return deque.front(); }
+
+  void PopFront() {
+    if (not deque.empty() and first == GetMinIndex()) {
+      deque.pop_front();
+    }
+    ++first;
+  }
+};
+
+class KmerMinimizerWindow {
+ public:
+  struct FreqHash {
+    int64_t freq{0};
+    Config::HashParams::htype hash{0};
+    Config::HashParams::htype fhash{0};
+
+    // bool operator==(const FreqHashPos &rhs) const { pos == rhs.pos; }
+    // bool operator!=(const FreqHashPos &rhs) { return not operator==(rhs); }
+    bool operator<(const FreqHash &rhs) const { return freq < rhs.freq or (freq == rhs.freq and hash < rhs.hash); }
+    bool operator>(const FreqHash &rhs) const { return rhs.operator<(*this); }
+  };
+
+ private:
+  MinQueue<FreqHash, std::greater<>> queue;
+
+  static std::vector<FreqHash> GetInitWindow(KWH<Config::HashParams::htype> &kwh, const int64_t window_size,
+                                             const kmer_index::KmerIndex::KmerCounter &counter) {
+    std::vector<FreqHash> init_window;
+    for (int i = 0; i < window_size; ++i, kwh = kwh.next()) {
+      init_window.push_back({counter.at(kwh.hash()), kwh.hash(), kwh.get_fhash()});
+      VERIFY(kwh.hasNext());
+    }
+    return init_window;
+  }
+
+  void PushBack(const int32_t freq, const Config::HashParams::htype hash, const Config::HashParams::htype fhash,
+                const int64_t pos) {
+    queue.PushBack(pos, {freq, hash, fhash});
+  }
+  void PopFront() { queue.PopFront(); }
+
+ public:
+  explicit KmerMinimizerWindow(const std::vector<FreqHash> &init_window) {
+    for (auto it = init_window.cbegin(); it != init_window.cend(); ++it) {
+      PushBack(it->freq, it->hash, it->fhash, it - init_window.cbegin());
+    }
+  }
+
+  KmerMinimizerWindow(KWH<Config::HashParams::htype> &kwh, const int64_t window_size,
+                      const kmer_index::KmerIndex::KmerCounter &counter)
+      : KmerMinimizerWindow(GetInitWindow(kwh, window_size, counter)) {}
+
+  void Add(const int32_t freq, const Config::HashParams::htype hash, const Config::HashParams::htype fhash,
+           const int64_t pos) {
+    PushBack(freq, hash, fhash, pos);
+    PopFront();
+  }
+
+  [[nodiscard]] FreqHash GetMinimizer() const { return queue.GetMin(); }
+  [[nodiscard]] int64_t GetMinimizerPos() const { return queue.GetMinIndex(); }
+};
 }// End namespace veritymap::kmer_index::kmer_window
