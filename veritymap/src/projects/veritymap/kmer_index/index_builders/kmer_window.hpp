@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include "../../cms_utils.hpp"
+#include "sketch/ccm.h"
+
 namespace veritymap::kmer_index::kmer_window {
 template<typename htype>
 class KmerWindow {
