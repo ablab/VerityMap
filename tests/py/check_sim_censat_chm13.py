@@ -71,6 +71,8 @@ for c in list(range(1,23))+['X']:
     ends = [0] * assembly_len
     samfile = "%s/%s/alignments.sam" % (outdir,chr_id)
     for r in pysam.AlignmentFile(samfile, "r").fetch():
+        if r.mapping_quality == 0:
+            continue
         tm_pos[r.query_name] = max(0, r.reference_start - r.query_alignment_start)
         mapped_read_len += r.query_alignment_length
         starts[r.reference_start] += 1
