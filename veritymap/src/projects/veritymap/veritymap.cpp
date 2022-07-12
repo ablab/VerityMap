@@ -14,7 +14,7 @@
 
 int main(int argc, char** argv) {
   CLParser parser{{"output-dir=", "target=", "queries=none", "threads=40", "only-index", "careful", "diploid",
-                   "index=none", "config=hifi-haploid-complete"},
+                   "index=none", "config=hifi-haploid"},
                   {},
                   {"o=output-dir", "t=threads"}};
   parser.parseCL(argc, argv);
