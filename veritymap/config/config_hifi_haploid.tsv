@@ -7,7 +7,7 @@ max_rare_cnt_query  1
 k_step_size 50
 k_window_size   30000
 window_regular_density   0.9
-strategy    exact_canon
+strategy    approximate_canon
 false_positive_probability  0.01
 exp_base    0.01
 nhash   5
