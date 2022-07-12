@@ -43,7 +43,7 @@ outside_diff = 0
 chains = join(outdir, "chains.tsv")
 with open(chains) as f:
     for line in f:
-        fs = line.split()
+        if not fs or 'Aln' not in fs[0]: fs = line.split()
         if 'Aln' not in fs[0]: continue
         is_primary = bool(int(fs[10]))
         if not is_primary:
