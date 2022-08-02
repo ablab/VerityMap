@@ -38,7 +38,7 @@ def main(assembly_fnames, reads_fname, labels, out_dir, threads, no_reuse, is_ca
         sys.exit(2)
 
     if not datatype:
-        datatype = "hifi"
+        datatype = "hifi-haploid-complete"
 
     list_labels = [None] * len(assembly_fnames)
     if labels:
