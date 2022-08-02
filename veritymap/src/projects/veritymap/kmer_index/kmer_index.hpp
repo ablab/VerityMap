@@ -1,225 +1,175 @@
 //
-// Created by Andrey Bzikadze on 2/22/21.
+// Created by Andrey Bzikadze on 06/14/22.
 //
 
 #pragma once
 
-#include <unordered_set>
-
-#include "../config/config.hpp"
-#include "../hash_utils.hpp"
-#include "../rolling_hash.hpp"
-
 namespace veritymap::kmer_index {
 
-using KmerIndex = std::unordered_map<Config::HashParams::htype, std::vector<size_t>>;
-using KmerIndexes = std::vector<KmerIndex>;
+class KmerIndex {
+ public:
+  using Kmer2PosSingle = std::unordered_map<Config::HashParams::htype, std::vector<int64_t>>;
+  using Kmer2Pos = std::vector<Kmer2PosSingle>;
+  using KmerCounter = std::unordered_map<Config::HashParams::htype, int64_t>;
 
-using Counter = std::unordered_map<Config::HashParams::htype, size_t>;
-
-using Counters = std::vector<Counter>;
-
-Counters _get_counters(const RollingHash<Config::HashParams::htype>& hasher, const std::vector<Sequence>& seqs) {
-  Counters counters;
-  for (auto it = seqs.cbegin(); it != seqs.cend(); ++it) {
-    const Sequence& seq = *it;
-    std::unordered_map<Config::HashParams::htype, size_t>& counter{counters.emplace_back()};
-    if (seq.size() < hasher.k) {
-      continue;
-    }
-    const size_t i = it - seqs.cbegin();
-    KWH<Config::HashParams::htype> kwh(hasher, seq, 0);
-    while (true) {
-      counter[kwh.get_fhash()] += 1;
-      if (!kwh.hasNext()) {
-        break;
-      }
-      kwh = kwh.next();
-    }
-  }
-  return counters;
-}
-
-Counter _get_readset_counter(const RollingHash<Config::HashParams::htype>& hasher, const std::vector<Contig>& contigs) {
-  std::vector<Sequence> seqs;
-  for (const auto& contig : contigs) { seqs.emplace_back(contig.seq); }
-  Counter counter;
-  for (auto it = seqs.cbegin(); it != seqs.cend(); ++it) {
-    const Sequence& seq = *it;
-    if (seq.size() < hasher.k) {
-      continue;
-    }
-    KWH<Config::HashParams::htype> kwh(hasher, seq, 0);
-    while (true) {
-      counter[kwh.hash()] += 1;
-      if (!kwh.hasNext()) {
-        break;
-      }
-      kwh = kwh.next();
-    }
-  }
-  return counter;
-}
-
-std::unordered_map<Config::HashParams::htype, std::unordered_set<size_t>> _get_hash2seqs(const Counters& counters) {
-  std::unordered_map<Config::HashParams::htype, std::unordered_set<size_t>> hash2seqs;
-  for (auto it = counters.cbegin(); it != counters.cend(); ++it) {
-    for (const auto& [hash, cnt] : *it) { hash2seqs[hash].insert(it - counters.cbegin()); }
-  }
-  return hash2seqs;
-}
-
-KmerIndexes _get_rare_kmers_from_counter(
-    const RollingHash<Config::HashParams::htype>& hasher, const std::vector<Sequence>& seqs,
-    const std::unordered_map<Config::HashParams::htype, std::unordered_set<size_t>>& hash2seqs,
-    const Counters& counters, const size_t max_rare_cnt) {
-  KmerIndexes rare_kmers_indexes;
-  for (auto it = seqs.cbegin(); it != seqs.cend(); ++it) {
-    KmerIndex& rare_kmers_index{rare_kmers_indexes.emplace_back()};
-    const Sequence& seq = *it;
-    const Counter& counter = counters.at(it - seqs.cbegin());
-    if (seq.size() < hasher.k) {
-      continue;
-    }
-    KWH<Config::HashParams::htype> kwh(hasher, seq, 0);
-    while (true) {
-      Config::HashParams::htype fhash{kwh.get_fhash()};
-      Config::HashParams::htype rhash{kwh.get_rhash()};
-      if ((hash2seqs.at(fhash).size() == 1) and (not hash2seqs.contains(rhash))
-          and (counter.at(fhash) <= max_rare_cnt)) {
-        rare_kmers_index[fhash].emplace_back(kwh.pos);
-      }
-      if (!kwh.hasNext()) {
-        break;
-      }
-      kwh = kwh.next();
-    }
-  }
-  return rare_kmers_indexes;
-}
-
-KmerIndexes get_rare_kmers(const std::vector<Sequence>& sequences, const RollingHash<Config::HashParams::htype>& hasher,
-                           const size_t max_rare_cnt) {
-  const Counters counters = _get_counters(hasher, sequences);
-  const std::unordered_map<Config::HashParams::htype, std::unordered_set<size_t>> hash2seqs = _get_hash2seqs(counters);
-  KmerIndexes rare_kmers_indexes = _get_rare_kmers_from_counter(hasher, sequences, hash2seqs, counters, max_rare_cnt);
-  return rare_kmers_indexes;
-}
-
-KmerIndexes get_rare_kmers(const std::vector<Contig>& contigs, const RollingHash<Config::HashParams::htype>& hasher,
-                           const size_t max_rare_cnt) {
-  std::vector<Sequence> seqs;
-  for (const auto& contig : contigs) { seqs.emplace_back(contig.seq); }
-  return get_rare_kmers(seqs, hasher, max_rare_cnt);
-}
-
-KmerIndex get_rare_kmers(const Sequence& sequence, const RollingHash<Config::HashParams::htype>& hasher,
-                         const size_t max_rare_cnt) {
-  const std::vector<Sequence> sequences{sequence};
-  return get_rare_kmers(sequences, hasher, max_rare_cnt).front();
-}
-
-std::vector<std::pair<size_t, size_t>> _get_norare_regions(const KmerIndex& kmer_index, const size_t max_dist,
-                                                           const size_t k, const size_t seq_len) {
-  VERIFY(seq_len > 0);
-  std::vector<size_t> pos{seq_len - 1};
-  for (const auto& [hash, kmer_pos] : kmer_index) {
-    for (const size_t p : kmer_pos) { pos.emplace_back(p); }
-  }
-  std::sort(pos.begin(), pos.end());
-
-  size_t prev_p{k};
-  std::vector<std::pair<size_t, size_t>> norare_regions;
-  for (const auto& p : pos) {
-    if (p <= prev_p) {
-      continue;
-    }
-    if (p - prev_p > max_dist) {
-      norare_regions.emplace_back(prev_p, p);
-    }
-    prev_p = p + k;
-  }
-  return norare_regions;
-}
-
-class IndexedContig {
-  const Contig& contig;
-  const RollingHash<Config::HashParams::htype>& hasher;
-  size_t max_rare_cnt;
-  KmerIndex kmer_index;
+ private:
+  Kmer2Pos kmer2pos;
+  KmerCounter counter;
+  const std::vector<Contig> &ctgs;
 
  public:
-  IndexedContig(const Contig& contig_, const RollingHash<Config::HashParams::htype>& hasher_,
-                const size_t max_rare_cnt_, KmerIndex kmer_index = {})
-      : contig{contig_},
-        hasher{hasher_},
-        max_rare_cnt{max_rare_cnt_},
-        kmer_index{std::move(kmer_index)} {}
-
-  [[nodiscard]] const Contig& get_contig() const { return contig; }
-  [[nodiscard]] size_t get_contig_size() const { return contig.size(); }
-  const RollingHash<Config::HashParams::htype>& get_hasher() const { return hasher; }
-  [[nodiscard]] size_t get_max_rare_cnt() const { return max_rare_cnt; }
-  const KmerIndex& get_kmer_index() const { return kmer_index; }
-
-  KmerIndex& get_kmer_index() { return kmer_index; }
-
-  [[nodiscard]] std::vector<std::pair<size_t, size_t>> get_norare_regions(const size_t max_dist, const size_t k) const {
-    return _get_norare_regions(kmer_index, max_dist, k, get_contig_size());
+  KmerIndex(Kmer2Pos kmer2pos, KmerCounter counter, const std::vector<Contig> &ctgs)
+      : kmer2pos{std::move(kmer2pos)},
+        counter{std::move(counter)},
+        ctgs{ctgs} {
+    VERIFY(this->ctgs.size() == this->kmer2pos.size());
   }
 
-  std::ostream& norare_regions2bam(const size_t max_dist, const size_t k, std::ostream& os) const {
-    const std::vector<std::pair<size_t, size_t>> norare_regions = get_norare_regions(max_dist, k);
-    for (const auto [s, e] : norare_regions) { os << contig.id << "\t" << s << "\t" << e << "\t" << e - s << " bp\n"; }
-    return os;
-  }
-
-  std::ostream& export_index(std::ostream& os) const {
-    for (const auto& [hash, pos] : kmer_index) {
-      for (const size_t p : pos) { os << contig.id << "\t" << p << "\t" << hash << "\n"; }
+  KmerIndex(const std::vector<Contig> &ctgs, const std::filesystem::path &input_fn) : ctgs{ctgs} {
+    std::unordered_map<std::string, int64_t> name2index;
+    for (auto it = ctgs.begin(); it != ctgs.end(); ++it) { name2index.emplace(it->id, it - ctgs.begin()); }
+    std::string name;
+    int64_t pos{0}, cnt{0};
+    Config::HashParams::htype hash;
+    kmer2pos.resize(name2index.size());
+    std::ifstream is(input_fn);
+    while (is >> name >> pos >> hash >> cnt) {
+      counter[hash] = cnt;
+      kmer2pos[name2index.at(name)][hash].push_back(pos);
     }
-    return os;
   }
+
+  std::vector<int64_t> NSolidKmers() const {
+    std::vector<int64_t> cnt;
+    for (const auto &k2p : kmer2pos) { cnt.push_back(k2p.size()); }
+    return cnt;
+  }
+
+  friend std::ostream &operator<<(std::ostream &os, const KmerIndex &index);
+
+  Kmer2PosSingle &operator[](const int64_t i) { return kmer2pos[i]; }
+  [[nodiscard]] const Kmer2PosSingle &operator[](const int64_t i) const { return kmer2pos[i]; }
+
+  [[nodiscard]] int64_t GetCount(const Config::HashParams::htype &hash) const {
+    auto it = counter.find(hash);
+    return it == counter.end() ? 0 : it->second;
+  }
+
+  [[nodiscard]] int64_t GetCount(const Config::HashParams::htype &hash, const int64_t i) const {
+    const Kmer2PosSingle &kmer2pos_single = kmer2pos.at(i);
+    auto it = kmer2pos_single.find(hash);
+    return it == kmer2pos_single.end() ? 0 : it->second.size();
+  }
+
+  [[nodiscard]] const std::vector<int64_t> *GetPos(const Config::HashParams::htype &hash, const int64_t i) const {
+    auto it = kmer2pos.at(i).find(hash);
+    return it != kmer2pos.at(i).end() ? &(it->second) : nullptr;
+  }
+
+  friend class HighFreqUniqueKmersFilterer;
 };
 
-using IndexedContigs = std::vector<IndexedContig>;
-
-std::ostream& export_index(std::ostream& os, const IndexedContigs& kmer_indexes) {
-  for (const IndexedContig& index : kmer_indexes) { index.export_index(os); }
+std::ostream &operator<<(std::ostream &os, const KmerIndex &index) {
+  for (auto it = index.kmer2pos.cbegin(); it != index.kmer2pos.cend(); ++it) {
+    const Contig &contig = index.ctgs.at(it - index.kmer2pos.cbegin());
+    for (const auto &[hash, pos] : *it) {
+      for (const int64_t p : pos) {
+        os << contig.id << "\t" << p << "\t" << hash << "\t" << index.counter.at(hash) << "\n";
+      }
+    }
+  }
   return os;
 }
 
-IndexedContigs import_index(const std::vector<Contig>& contigs, const RollingHash<Config::HashParams::htype>& hasher,
-                            const size_t max_rare_cnt, std::istream& is) {
-  IndexedContigs icontigs;
-  std::unordered_map<std::string, size_t> name2ctg;
-  for (auto it = contigs.begin(); it != contigs.end(); ++it) {
-    icontigs.emplace_back(*it, hasher, max_rare_cnt);
-    name2ctg[it->id] = it - contigs.begin();
+class HighFreqUniqueKmersFilterer {
+  int64_t nthreads{1};
+  const RollingHash<Config::HashParams::htype> &hasher;
+  Config::CommonParams common_params;
+  Config::KmerIndexerParams kmer_indexer_params;
+  logging::Logger &logger;
+
+ public:
+  HighFreqUniqueKmersFilterer(const int64_t nthreads, const RollingHash<Config::HashParams::htype> &hasher,
+                              const Config::CommonParams &common_params,
+                              const Config::KmerIndexerParams &kmer_indexer_params, logging::Logger &logger)
+      : nthreads{nthreads},
+        hasher{hasher},
+        common_params{common_params},
+        kmer_indexer_params{kmer_indexer_params},
+        logger{logger} {}
+
+  void Filter(KmerIndex &kmer_index, const std::vector<Contig> &contigs) {
+    // ban unique k-mers in assembly that have unusually high coverage
+
+    logger.info() << "Counting unique k-mers from the target...\n";
+    std::unordered_map<Config::HashParams::htype, std::atomic<size_t>> unique_kmers;
+    for (const auto &[hash, cnt] : kmer_index.counter) {
+      if (cnt == 1) {
+        unique_kmers.emplace(hash, 0);
+      }
+    }
+    logger.info() << "There are " << unique_kmers.size() << " unique k-mers in the target\n";
+
+    std::function<void(const Contig &)> process_read = [&unique_kmers, this](const Contig &contig) {
+      if (contig.size() < hasher.k) {
+        return;
+      }
+      KWH<Config::HashParams::htype> kwh(hasher, contig.seq, 0);
+      while (true) {
+        if (!kwh.hasNext()) {
+          break;
+        }
+        kwh = kwh.next();
+        const Config::HashParams::htype fhash = kwh.get_fhash();
+        const Config::HashParams::htype rhash = kwh.get_rhash();
+        for (const Config::HashParams::htype hash : std::vector<Config::HashParams::htype>{fhash, rhash}) {
+          auto kmer_it = unique_kmers.find(hash);
+          if (kmer_it != unique_kmers.end()) {
+            ++(kmer_it->second);
+            break;
+          }
+        }
+      }
+    };
+    process_in_parallel(contigs, process_read, nthreads, true);
+
+    logger.info() << "Finished counting frequences of unique k-mers in the queries...\n";
+
+    auto [mean, stddev] = [&unique_kmers]() -> std::pair<double, double> {
+      auto it = unique_kmers.begin();
+      double mean = it->second;
+      double variance = 0;
+      for (int k = 1; it != unique_kmers.end(); ++it, ++k) {
+        double mean_pre = mean;
+        const auto &val = it->second;
+        mean += (val - mean) / k;
+        variance += (val - mean) * (val - mean_pre);
+      }
+      return {mean, std::sqrt(variance / unique_kmers.size())};
+    }();
+
+    logger.info() << "Mean (std) multiplicity of a unique k-mer = " << mean << " (" << stddev << ")\n";
+
+    const uint max_read_freq = mean + kmer_indexer_params.careful_upper_bnd_cov_mult * stddev;
+    logger.info() << "Max solid k-mer frequency in reads " << max_read_freq << "\n";
+
+    uint64_t n{0};
+    for (auto &[hash, cnt] : unique_kmers) {
+      if (cnt > max_read_freq) {
+        kmer_index.counter.erase(hash);
+        for (KmerIndex::Kmer2PosSingle &kmer2pos_single : kmer_index.kmer2pos) {
+          auto it = kmer2pos_single.find(hash);
+          if (it != kmer2pos_single.end()) {
+            kmer2pos_single.erase(it);
+            kmer_index.counter.erase(hash);
+            break;
+          }
+        }
+        ++n;
+      }
+    }
+    logger.info() << "Filtered " << n << " high multiplicity k-mers\n";
   }
-
-  std::string name;
-  size_t pos;
-  Config::HashParams::htype hash;
-  while (is >> name >> pos >> hash) { icontigs[name2ctg[name]].get_kmer_index()[hash].emplace_back(pos); }
-  return icontigs;
-}
-
-IndexedContigs get_exact_indexed_contigs(const std::vector<Contig>& contigs,
-                                         const RollingHash<Config::HashParams::htype>& hasher, size_t max_rare_cnt) {
-  IndexedContigs indexed_contigs;
-  KmerIndexes rare_kmers_indexes = get_rare_kmers(contigs, hasher, max_rare_cnt);
-  for (auto it = rare_kmers_indexes.begin(); it != rare_kmers_indexes.end(); ++it) {
-    const Contig& contig = contigs.at(it - rare_kmers_indexes.begin());
-    indexed_contigs.emplace_back(contig, hasher, max_rare_cnt, std::move(*it));
-  }
-  return indexed_contigs;
-}
-
-std::ostream& norare_regions2bam(const IndexedContigs& indexed_contigs, const size_t max_dist, const size_t k,
-                                 std::ostream& os) {
-  for (const IndexedContig& indexed_contig : indexed_contigs) { indexed_contig.norare_regions2bam(max_dist, k, os); }
-  return os;
-}
+};
 
 }// End namespace veritymap::kmer_index

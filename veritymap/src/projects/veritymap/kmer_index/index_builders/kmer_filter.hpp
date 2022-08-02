@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "../cms_utils.hpp"
+#include "../../cms_utils.hpp"
 #include "bloom.hpp"
 #include "sketch/ccm.h"
 
@@ -48,7 +48,7 @@ class KmerFilter {
 
 template<typename htype>
 class KmerFilterBuilder {
-  size_t nthreads{0};
+  int64_t nthreads{1};
   const RollingHash<htype> &hasher;
   Config::CommonParams common_params;
   Config::KmerIndexerParams kmer_indexer_params;
@@ -148,7 +148,7 @@ class KmerFilterBuilder {
   }
 
  public:
-  KmerFilterBuilder(size_t nthreads, const RollingHash<htype> &hasher, const Config::CommonParams &common_params,
+  KmerFilterBuilder(int64_t nthreads, const RollingHash<htype> &hasher, const Config::CommonParams &common_params,
                     const Config::KmerIndexerParams &kmer_indexer_params)
       : nthreads(nthreads),
         hasher(hasher),

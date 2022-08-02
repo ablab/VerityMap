@@ -40,6 +40,9 @@ with open(chains) as f:
     for line in f:
         fs = line.split()
         if 'Aln' not in fs[0]: continue
+        is_primary = bool(int(fs[10]))
+        if not is_primary:
+            continue
         read_name, ref_name, read_s, read_e, read_len, ref_s, ref_e = fs[1:8]
         read_name=read_name.replace('+','').replace('-','')
         try: ref_s, ref_e, read_s, read_e = map(int, (ref_s, ref_e, read_s, read_e))

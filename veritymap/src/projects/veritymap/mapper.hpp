@@ -2,6 +2,8 @@
 // Created by Andrey Bzikadze on 03/31/22.
 //
 
+#include "kmer_index/indexed_contigs.hpp"
+
 namespace veritymap::mapper {
 
 class Mapper {
@@ -14,58 +16,75 @@ class Mapper {
   const RollingHash<Config::HashParams::htype> &hasher;
 
  private:
-  [[nodiscard]] chaining::Chains MapSingleQueryStrand(const kmer_index::IndexedContig &indexed_target,
+  [[nodiscard]] chaining::Chains MapSingleQueryStrand(const indexed_contigs::IndexedContigs &indexed_targets,
                                                       const Contig &query,
                                                       const dna_strand::Strand &query_strand) const {
-    const matches::Matches matches =
-        matcher.GetMatches(indexed_target.get_contig(), indexed_target.get_kmer_index(), query, query_strand);
-    if (matches.size() < config.chaining_params.min_matches) {
-      return {};
+    chaining::Chains chains;
+    for (int i = 0; i < indexed_targets.Size(); ++i) {
+      const matches::Matches matches = matcher.GetMatches(indexed_targets, i, query, query_strand);
+      if (matches.size() < config.chaining_params.min_matches) {
+        continue;
+      }
+      const auto [scores, backtracks] = dp_scorer.GetScores(matches);
+      chaining::Chains new_chains =
+          chainer.GetChains(indexed_targets.Contigs().at(i), query, query_strand, matches, scores, backtracks);
+      for (chaining::Chain &chain : new_chains) { chains.emplace_back(std::move(chain)); }
     }
-
-    const auto [scores, backtracks] = dp_scorer.GetScores(matches);
-
-    chaining::Chains chains =
-        chainer.GetChains(indexed_target.get_contig(), query, query_strand, matches, scores, backtracks);
     return chains;
   }
 
-  [[nodiscard]] std::optional<chaining::Chain> MapSingleQuery(const Contig &query,
-                                                              const kmer_index::IndexedContigs &indexed_targets) const {
+  [[nodiscard]] std::vector<chaining::Chain> MapSingleQuery(
+      const Contig &query, const indexed_contigs::IndexedContigs &indexed_targets) const {
     using score_type = typename Config::ChainingParams::score_type;
 
-    chaining::Chains chains;
-    for (const kmer_index::IndexedContig &indexed_target : indexed_targets) {
-      chaining::Chains chains_f = MapSingleQueryStrand(indexed_target, query, dna_strand::Strand::forward);
-      chaining::Chains chains_r = MapSingleQueryStrand(indexed_target, query, dna_strand::Strand::reverse);
+    chaining::Chains chains = MapSingleQueryStrand(indexed_targets, query, dna_strand::Strand::forward);
+    chaining::Chains chains_r = MapSingleQueryStrand(indexed_targets, query, dna_strand::Strand::reverse);
 
-      for (size_t i = 0; i < 2; ++i) {
-        if (chains_f.size() > i) {
-          chains.emplace_back(std::move(chains_f[i]));
-        }
-        if (chains_r.size() > i) {
-          chains.emplace_back(std::move(chains_r[i]));
-        }
-      }
-    }
+    for (chaining::Chain &chain : chains_r) { chains.emplace_back(std::move(chain)); }
+
     if (chains.empty())
-      return std::nullopt;
-    if (chains.size() == 1)
-      return std::move(chains.front());
+      return {};
 
     auto pr_it = std::max_element(chains.begin(), chains.end(),
                                   [](const auto &lhs, const auto &rhs) { return lhs.score < rhs.score; });
-    Config::ChainingParams::score_type sc_score = 0;
-    for (auto it = chains.begin(); it != chains.end(); ++it) {
-      if (it == pr_it)
-        continue;
-      if (it->score > sc_score)
-        sc_score = it->score;
+    int64_t top_range = pr_it->Range(config.common_params.k);
+    if (top_range < config.chaining_params.min_chain_range)
+      return {};
+
+    // auto count = [](decltype(pr_it) it) -> std::tuple<int, int, int> {
+    //   int uniq{0}, dup{0}, rare{0};
+    //   for (const auto &match : it->matches) {
+    //     if (match.is_unique())
+    //       ++uniq;
+    //     else if (match.target_freq == 2)
+    //       ++dup;
+    //     else
+    //       ++rare;
+    //   }
+    //   return {uniq, dup, rare};
+    // };
+    // if (query.id == "S2_18802")
+    // {
+    //   auto count_pr = count(pr_it);
+    //   auto count_sc = count(sc_it);
+    //   std::cout << query.id << "\n";
+    //   bool first = query.id[1] == '1';
+    //   bool top_correct = first == (pr_it->target.id.substr(5, 5) == "chm13");
+    //   std::cout << pr_it -> target.id.substr(5, 5) << " " << pr_it -> matches.front().target_pos << " " << pr_it -> score << " " << std::get<0>(count_pr) << " " << std::get<1>(count_pr) << " " << std::get<2>(count_pr) << " " << (top_correct ? "*" : "") << '\n';
+    //   std::cout << sc_it -> target.id.substr(5, 5) << " " << sc_it -> matches.front().target_pos << " " << sc_it -> score << " " << std::get<0>(count_sc) << " " << std::get<1>(count_sc) << " " << std::get<2>(count_sc) << " " << (not top_correct ? "*" : "") << '\n';
+    //   std::cout << "\n";
+    // }
+
+    std::vector<chaining::Chain> new_chains;
+    for (chaining::Chain &chain : chains) {
+      if (chain.score > pr_it->score * config.chaining_params.max_top_score_prop) {
+        new_chains.emplace_back(std::move(chain));
+      }
     }
-    const double top_score_prop = static_cast<double>(sc_score) / pr_it->score;
-    if (top_score_prop < config.chaining_params.max_top_score_prop)
-      return std::move(*pr_it);
-    return std::nullopt;
+    if (new_chains.size() == 1) {
+      new_chains.front().SetPrimary();
+    }
+    return new_chains;
   }
 
  public:
@@ -84,31 +103,30 @@ class Mapper {
         chainer{config.common_params, config.chaining_params},
         hasher{hasher} {}
 
-  void ParallelRun(const kmer_index::IndexedContigs &indexed_targets, const std::vector<Contig> &queries,
+  void ParallelRun(const indexed_contigs::IndexedContigs &indexed_targets, const std::vector<Contig> &queries,
                    const std::filesystem::path &chains_fn, const std::filesystem::path &sam_fn,
                    const std::string &cmd) {
     std::mutex chainsMutex;
-    using TargetQuery = std::tuple<const kmer_index::IndexedContig *, const Contig *>;
 
     std::ofstream chains_os(chains_fn);
     std::ofstream sam_os(sam_fn);
-    for (const kmer_index::IndexedContig &itarget : indexed_targets) {
-      const Contig &target = itarget.get_contig();
+    for (const Contig &target : indexed_targets.Contigs()) {
       sam_os << "@SQ\tSN:" << target.id << "\tLN:" << target.seq.size() << "\n";
     }
     sam_os << "@PG\tID:VerityMap\tPN:VerityMap\tVN:2.0\tCL:" << cmd << "\n";
 
     std::function<void(const Contig &query)> align_read = [&indexed_targets, &chainsMutex, &chains_os, &sam_os,
                                                            this](const Contig &query) {
-      std::optional<chaining::Chain> chain = MapSingleQuery(query, indexed_targets);
+      std::vector<chaining::Chain> chains = MapSingleQuery(query, indexed_targets);
 
-      if (chain.has_value()) {
-        std::string sam_record =
-            chaining::chain2samrecord(chain.value(), config.common_params, config.chain2sam_params);
-        chainsMutex.lock();
-        chains_os << chain.value();
-        sam_os << sam_record << "\n";
-        chainsMutex.unlock();
+      if (not chains.empty()) {
+        for (const chaining::Chain &chain : chains) {
+          std::string sam_record = chaining::chain2samrecord(chain, config.common_params, config.chain2sam_params);
+          chainsMutex.lock();
+          chains_os << chain;
+          sam_os << sam_record << "\n";
+          chainsMutex.unlock();
+        }
       }
     };
 

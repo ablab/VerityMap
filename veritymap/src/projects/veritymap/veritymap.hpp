@@ -15,7 +15,8 @@
 #include "config/config.hpp"
 #include "dp_scoring.hpp"
 #include "hash_utils.hpp"
-#include "kmer_index/kmer_index.hpp"
+#include "kmer_index/indexed_contigs.hpp"
+// #include "kmer_index/kmer_index.hpp"
 #include "kmer_index/target_indexer.hpp"
 #include "mapper.hpp"
 #include "matches.hpp"
@@ -48,7 +49,7 @@ class VerityMap {
 
   void Map(const std::filesystem::path &target_path, const std::filesystem::path &queries_path,
            const std::filesystem::path &outdir, const std::string &cmd,
-           const std::filesystem::path &index_path) {// TODO make optional
+           const std::optional<std::filesystem::path> &index_path) {
     std::vector<Contig> targets{io::SeqReader(target_path).readAllContigs()};
     for (const Contig &target : targets) {
       logger.info() << "Target length " << target.seq.size() << ", name " << target.id << " from " << target_path
@@ -58,17 +59,17 @@ class VerityMap {
     std::vector<Contig> queries(io::SeqReader(queries_path).readAllContigs());
     logger.info() << "Queries from " << queries_path << ", total " << queries.size() << " sequences " << std::endl;
 
-    const kmer_index::IndexedContigs indexed_targets =
-        kmer_index::get_indexed_targets(queries, targets, outdir, hasher, nthreads, logger, index_path,
-                                        config.common_params, config.kmer_indexer_params);
+    kmer_index::TargetIndexer target_indexer(config.common_params, config.kmer_indexer_params, logger, hasher);
+    const indexed_contigs::IndexedContigs indexed_targets =
+        target_indexer.GetIndexedTargets(targets, queries, index_path, outdir, nthreads);
 
     {
-      const auto uncovered_fn = outdir / "norarekmers.bed";
-      std::ofstream uncovered_os(uncovered_fn);
-      kmer_index::norare_regions2bam(indexed_targets, config.kmer_indexer_params.min_uncovered_len,
-                                     config.common_params.k, uncovered_os);
+      const auto no_solid_kmers_fn = outdir / "no_solid_kmers.bed";
+      std::ofstream no_solid_kmers_os(no_solid_kmers_fn);
+      indexed_targets.NoSolidRegions2Bed(config.kmer_indexer_params.min_uncovered_len, config.common_params.k,
+                                         no_solid_kmers_os);
       logger.info() << "Finished exporting long (>= " << config.kmer_indexer_params.min_uncovered_len << " bp) "
-                    << "regions without rare k-mers to " << uncovered_fn << std::endl;
+                    << "regions without solid k-mers to " << no_solid_kmers_fn << std::endl;
     }
 
     if (only_index) {

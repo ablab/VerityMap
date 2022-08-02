@@ -13,10 +13,10 @@
 #include "version/version.hpp"
 
 int main(int argc, char** argv) {
-  CLParser parser{
-      {"output-dir=", "target=", "queries=none", "threads=40", "only-index", "careful", "index=none", "config=hifi"},
-      {},
-      {"o=output-dir", "t=threads"}};
+  CLParser parser{{"output-dir=", "target=", "queries=none", "threads=40", "only-index", "careful", "diploid",
+                   "index=none", "config=hifi-haploid-complete"},
+                  {},
+                  {"o=output-dir", "t=threads"}};
   parser.parseCL(argc, argv);
   if (!parser.check().empty()) {
     std::cerr << "Incorrect parameters" << std::endl;
@@ -52,17 +52,7 @@ int main(int argc, char** argv) {
   logger << "CMD: " << cmd << std::endl;
 
   const std::filesystem::path target_path = std::filesystem::canonical(parser.getValue("target"));
-
-  auto get_path_w_def = [&parser](const std::string& parameter) {
-    std::filesystem::path path = parser.getValue(parameter);
-    if (path != "none") {
-      path = std::filesystem::canonical(path);
-    } else {
-      path = "";
-    }
-    return path;
-  };
-  const std::filesystem::path queries_path = get_path_w_def("queries");
+  const std::filesystem::path queries_path = std::filesystem::canonical(parser.getValue("queries"));
 
   bool only_index = parser.getCheck("only-index");
   bool careful_mode = parser.getCheck("careful");
@@ -71,20 +61,39 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  const std::filesystem::path index_path = get_path_w_def("index");
+  auto get_path_w_def = [&parser](const std::string& parameter) -> std::optional<std::filesystem::path> {
+    std::filesystem::path path = parser.getValue(parameter);
+    std::optional<std::filesystem::path> path_opt;
+    if (path != "none") {
+      return std::filesystem::canonical(path);
+    }
+    return {};
+  };
+  const std::optional<std::filesystem::path> index_path = get_path_w_def("index");
 
   const std::filesystem::path binary_path = argv[0];
   const std::filesystem::path config_fn = [&parser, &logger, &binary_path] {
     std::string config = parser.getValue("config");
     std::filesystem::path dirpath = binary_path.parent_path();
-    if (config == "hifi") {
-      return dirpath / "config/config_tm2_hifi.tsv";
-    } else if (config == "ont") {
-      return dirpath / "config/config_tm2_ont.tsv";
+    if (config == "hifi-haploid-complete") {
+      return dirpath / "config/config_hifi_haploid_complete.tsv";
+    } else if (config == "hifi-haploid") {
+      return dirpath / "config/config_hifi_haploid.tsv";
+    } else if (config == "hifi-diploid") {
+      return dirpath / "config/config_hifi_diploid.tsv";
+    } else if (config == "ont-haploid-complete") {
+      return dirpath / "config/config_ont_haploid_complete.tsv";
     }
     return static_cast<std::filesystem::path>(config);
   }();
   veritymap::Config config = veritymap::Config::load_config_file(config_fn);
+  // bool diploid_mode = parser.getCheck("diploid");
+  // if (diploid_mode) {
+  //   // TODO refactor this out and modify config before copying into the output file
+  //   config.common_params.diploid = true;
+  //   config.kmer_indexer_params.strategy = veritymap::Config::KmerIndexerParams::Strategy::approximate_canon;
+  // }
+
   const auto config_out_fn = output_dir / "config.tsv";
   std::filesystem::copy_file(config_fn, config_out_fn, std::filesystem::copy_options::overwrite_existing);
   logger.info() << "Config exported to " << config_out_fn << "\n";

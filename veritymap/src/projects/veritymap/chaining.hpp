@@ -18,6 +18,7 @@ struct Chain {
   const dna_strand::Strand query_strand;
   matches::Matches matches;
   Config::ChainingParams::score_type score;
+  bool is_primary{false};
 
   [[nodiscard]] size_t query_size() const { return query.size(); }
 
@@ -38,14 +39,27 @@ struct Chain {
   Chain &operator=(Chain) = delete;
   Chain(Chain &&) = default;
   Chain &operator=(Chain &&) = delete;
+
+  [[nodiscard]] int64_t Range(const int64_t k) const {
+    const int64_t query_range = matches.back().query_pos + k - matches.front().query_pos;
+    const int64_t target_range = matches.back().target_pos + k - matches.front().target_pos;
+    return std::max(query_range, target_range);
+  }
+
+  void SetPrimary() { is_primary = true; }
 };
+
+inline bool operator<(const Chain &lhs, const Chain &rhs) { return lhs.score < rhs.score; }
+inline bool operator>(const Chain &lhs, const Chain &rhs) { return operator<(rhs, lhs); }
+inline bool operator<=(const Chain &lhs, const Chain &rhs) { return !operator>(lhs, rhs); }
+inline bool operator>=(const Chain &lhs, const Chain &rhs) { return !operator<(lhs, rhs); }
 
 std::ostream &operator<<(std::ostream &os, const Chain &chain) {
   const std::string strand = dna_strand::strand2str(chain.query_strand);
   os << strand << "Aln " << chain.query.id << " " << chain.target.id << " " << chain.query_st() << " "
      << chain.query_en()// TODO add k
-     << " " << chain.query_size() << " " << chain.target_st() << " " << chain.target_en() << " score " << chain.score
-     << " num kmers " << size(chain.matches) << "\n";
+     << " " << chain.query_size() << " " << chain.target_st() << " " << chain.target_en() << " " << chain.score << " "
+     << size(chain.matches) << " " << chain.is_primary << "\n";
   os << "Chain\n" << chain.matches;
   return os;
 }
@@ -93,11 +107,15 @@ class Chainer {
         end_chain[i] = 1;
       }
     }
-    // for (size_t i = 0; i < scores.size(); ++i) {
-    //   std::cout << i << " " << matches[i].target_pos << " " << matches[i].query_pos << " " << matches[i].target_freq << " "
-    //             << scores[i] << " " << backtracks[i] << "\n";
+    // if (query.id == "")
+    // {
+    //   std::cout << target.id << "\n";
+    //   for (size_t i = 0; i < scores.size(); ++i) {
+    //     std::cout << i << " " << matches[i].target_pos << " " << matches[i].query_pos << " "
+    //               << int(matches[i].target_freq) << " " << scores[i] << " " << backtracks[i] << "\n";
+    //   }
+    //   std::cout << "\n";
     // }
-    // std::cout << "\n";
 
     using ScoredMatches = std::pair<matches::Matches, score_type>;
 
@@ -113,19 +131,14 @@ class Chainer {
         end_chain[st] = 1;
         st = backtracks[st];
       }
+      chain_matches.push_back(matches[st]);
       std::reverse(chain_matches.begin(), chain_matches.end());
       for (size_t i = 1; i < chain_matches.size(); ++i) {
         VERIFY(chain_matches[i].query_pos > chain_matches[i - 1].query_pos);
         VERIFY(chain_matches[i].target_pos > chain_matches[i - 1].target_pos);
       }
       VERIFY(not chain_matches.empty());
-      const score_type score = scores[en] - scores[st];
-      const size_t chain_range = [&chain_matches, this] {
-        const size_t query_range = chain_matches.back().query_pos + common_params.k - chain_matches.front().query_pos;
-        const size_t target_range =
-            chain_matches.back().target_pos + common_params.k - chain_matches.front().target_pos;
-        return std::max(query_range, target_range);
-      }();
+      const score_type score = scores[en] - (backtracks[st] == def_backtrack ? 0 : scores[backtracks[st]]);
       const int uniq_kmers = [&chain_matches] {
         int uniq_kmers{0};
         for (const auto &match : chain_matches) {
@@ -135,8 +148,7 @@ class Chainer {
         }
         return uniq_kmers;
       }();
-      if ((score >= chaining_params.min_score) and (chain_range >= chaining_params.min_chain_range)
-          and (uniq_kmers >= chaining_params.min_uniq_kmers)) {
+      if ((score >= chaining_params.min_score) and (uniq_kmers >= chaining_params.min_uniq_kmers)) {
         scored_matches_vec.emplace_back(std::move(chain_matches), score);
       }
     }
@@ -288,10 +300,11 @@ std::string chain2samrecord(const Chain &chain, const Config::CommonParams &comm
   const Sequence target_seq =
       chain.target.seq.Subseq(intervals.front().t_st, intervals.front().t_st + cigar.target_length());
   const size_t start_pos = intervals.front().t_st + 1 + left_trim;
+  int quality = chain.is_primary ? 60 : 0;
   const std::string read_flag = chain.query_strand == dna_strand::Strand::forward ? "0" : "16";
   std::stringstream s;
-  s << chain.query.id << "\t" << read_flag << "\t" << chain.target.id << "\t" << start_pos << "\t60\t" << cigar
-    << "\t*\t0\t0\t" << query_seq << "\t*\tNM:i:" << cigar.nmismatches(target_seq, query_seq);
+  s << chain.query.id << "\t" << read_flag << "\t" << chain.target.id << "\t" << start_pos << "\t" << quality << "\t"
+    << cigar << "\t*\t0\t0\t" << query_seq << "\t*\tNM:i:" << cigar.nmismatches(target_seq, query_seq);
   return s.str();
 }
 

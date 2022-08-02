@@ -71,13 +71,15 @@ for c in list(range(1,23))+['X']:
     ends = [0] * assembly_len
     samfile = "%s/%s/alignments.sam" % (outdir,chr_id)
     for r in pysam.AlignmentFile(samfile, "r").fetch():
+        if r.mapping_quality == 0:
+            continue
         tm_pos[r.query_name] = max(0, r.reference_start - r.query_alignment_start)
         mapped_read_len += r.query_alignment_length
         starts[r.reference_start] += 1
         ends[r.reference_end] += 1
 
     norarekmers_len = 0
-    with open("%s/%s/norarekmers.bed" % (outdir,chr_id)) as f:
+    with open("%s/%s/no_solid_kmers.bed" % (outdir,chr_id)) as f:
         for line in f:
             fs = line.split()
             norarekmers_len += int(fs[3])

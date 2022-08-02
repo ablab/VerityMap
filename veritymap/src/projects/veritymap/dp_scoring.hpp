@@ -13,7 +13,7 @@ using ScoresBacktracks = std::pair<std::vector<Config::ChainingParams::score_typ
 class DPScorer {
   const Config::CommonParams &common_params;
   const Config::ChainingParams &chaining_params;
-  std::vector<double> logs;
+  std::vector<double> diff_pens;
 
  public:
   DPScorer(const DPScorer &) = delete;
@@ -24,8 +24,10 @@ class DPScorer {
   DPScorer(const Config::CommonParams &common_params, const Config::ChainingParams &chaining_params)
       : common_params{common_params},
         chaining_params{chaining_params} {
-    logs.reserve(chaining_params.max_jump);
-    for (uint64_t i = 0; i < chaining_params.max_jump; ++i) { logs.emplace_back(std::log((double) i)); }
+    for (int64_t i = 0; i < chaining_params.max_supp_dist_diff; ++i) { diff_pens.emplace_back(0); }
+    for (uint64_t i = 1; i < chaining_params.max_jump; ++i) {
+      diff_pens.emplace_back(std::sqrt(std::sqrt((double) i)) - 1);
+    }
   }
 
   [[nodiscard]] ScoresBacktracks GetScores(const matches::Matches &matches) const {
@@ -40,8 +42,9 @@ class DPScorer {
     for (auto it = matches.cbegin(); it != matches.cend(); ++it) {
       const matches::Match &match{*it};
 
-      const score_type freq_weight =
-          match.is_unique() ? chaining_params.match_score_unique : chaining_params.match_score_rare;
+      const score_type freq_weight = match.is_unique() ? chaining_params.match_score_unique
+          : match.is_dup()                             ? chaining_params.match_score_dup
+                                                       : chaining_params.match_score_rare;
 
       score_type score{freq_weight};
       size_t backtrack{def_backtrack};
@@ -68,8 +71,7 @@ class DPScorer {
         const match_pos_type jump_penalty = std::min(std::abs(query_jump), std::abs(target_jump));
         const match_pos_type dist_diff = std::abs(std::abs(query_jump) - std::abs(target_jump));
 
-        // const score_type diff_penalty = dist_diff <= chaining_params.max_supp_dist_diff ? 0 : static_cast<score_type>(dist_diff) / (jump_penalty + 1);
-        const score_type diff_penalty = dist_diff <= chaining_params.max_supp_dist_diff ? 0 : logs[dist_diff];
+        const score_type diff_penalty = diff_pens[dist_diff];
 
         const score_type overlap_penalty =
             std::min<score_type>(1, static_cast<score_type>(query_jump + common_params.k) / common_params.k);
