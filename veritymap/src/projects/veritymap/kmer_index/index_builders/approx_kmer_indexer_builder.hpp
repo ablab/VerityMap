@@ -119,6 +119,16 @@ class ApproxKmerIndexBuilder : public AbstractKmerIndexBuilder {
     }
   }
 
+  void FilterFalsePositives(kmer_index::KmerIndex::Kmer2Pos &kmer2pos,
+                            kmer_index::KmerIndex::KmerCounter &kmer_counter) const {
+    for (auto it = begin(kmer_counter); it != end(kmer_counter);) {
+      if (it->second > kmer_indexer_params.max_rare_cnt_target) {
+        for (kmer_index::KmerIndex::Kmer2PosSingle &kmer2pos_single : kmer2pos) { kmer2pos_single.erase(it->first); }
+        it = kmer_counter.erase(it);// previously this was something like m_map.erase(it++);
+      } else
+        ++it;
+    }
+  }
   [[nodiscard]] kmer_index::KmerIndex GetKmerIndex(const std::vector<Contig> &contigs,
                                                    const kmer_index::kmer_filter::KmerFilter &kmer_filter) const {
     kmer_index::KmerIndex::KmerCounter kmer_counter;
@@ -129,6 +139,9 @@ class ApproxKmerIndexBuilder : public AbstractKmerIndexBuilder {
       kmer_index::KmerIndex::Kmer2PosSingle &kmer2pos_single = kmer2pos.emplace_back();
       GetKmerIndex(contig, kmer_filter, kmer_counter, kmer2pos_single, it - contigs.cbegin());
     }
+    logger.info() << "Filtering potential false positive solid k-mers...\n";
+    FilterFalsePositives(kmer2pos, kmer_counter);
+    logger.info() << "Finished filtering\n";
     return {kmer2pos, kmer_counter, contigs};
   }
 
