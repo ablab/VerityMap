@@ -24,7 +24,7 @@ def make_plotly_html(assemblies, all_data, out_dir):
     for asm in assemblies:
         open(join(out_dir, asm.label + "_kmers_dist_diff.bed"), "w")
         open(join(out_dir, asm.label + "_reads_dist_diff.txt"), "w")
-        open(join(out_dir, asm.label + "_errors.bed"), "w")
+        open(join(out_dir, asm.label + "_errors.tsv"), "w")
 
     for ref_name in all_refs:
         fig = make_subplots(rows=len(all_data), cols=1,
@@ -92,11 +92,11 @@ def make_plotly_html(assemblies, all_data, out_dir):
                                 (ref_name, prev_i, x - step, prev_diff, prev_v))
                         prev_i = 0
                         prev_v = 0
-            # errors_fname = join(out_dir, asm_id + "_errors.bed")
-            # with open(errors_fname, "a") as f:
-            #     for e in new_errors:
-            #         f.write("\t".join([str(s) for s in e]))
-            #         f.write("\n")
+            errors_fname = join(out_dir, asm_id + "_errors.tsv")
+            with open(errors_fname, "a") as f:
+                for e in new_errors:
+                    f.write("\t".join([str(s) for s in e]))
+                    f.write("\n")
             reads_fname = join(out_dir, asm_id + "_reads_dist_diff.txt")
             prev_i = 0
             with open(reads_fname, "a") as f:
