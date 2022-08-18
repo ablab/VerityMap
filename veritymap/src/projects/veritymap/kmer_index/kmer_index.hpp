@@ -4,23 +4,37 @@
 
 #pragma once
 
+#include <unordered_set>
+
 namespace veritymap::kmer_index {
 
 class KmerIndex {
  public:
   using Kmer2PosSingle = std::unordered_map<Config::HashParams::htype, std::vector<int64_t>>;
   using Kmer2Pos = std::vector<Kmer2PosSingle>;
+  using Kmer2Contig = std::unordered_map<Config::HashParams::htype, std::unordered_set<int64_t>>;
   using KmerCounter = std::unordered_map<Config::HashParams::htype, int64_t>;
 
  private:
   Kmer2Pos kmer2pos;
   KmerCounter counter;
+  Kmer2Contig kmer2contig;
   const std::vector<Contig> &ctgs;
 
+  static Kmer2Contig GetKmer2Contig(const Kmer2Pos &kmer2pos) {
+    Kmer2Contig kmer2contig;
+    for (auto it = kmer2pos.cbegin(); it != kmer2pos.cend(); ++it) {
+      const Kmer2PosSingle &kmer2pos_single = *it;
+      for (auto &[hash, pos] : kmer2pos_single) { kmer2contig[hash].emplace(it - kmer2pos.cbegin()); }
+    }
+    return kmer2contig;
+  }
+
  public:
-  KmerIndex(Kmer2Pos kmer2pos, KmerCounter counter, const std::vector<Contig> &ctgs)
-      : kmer2pos{std::move(kmer2pos)},
-        counter{std::move(counter)},
+  KmerIndex(Kmer2Pos kmer2pos_, KmerCounter counter_, const std::vector<Contig> &ctgs)
+      : kmer2pos{std::move(kmer2pos_)},
+        counter{std::move(counter_)},
+        kmer2contig{GetKmer2Contig(kmer2pos)},
         ctgs{ctgs} {
     VERIFY(this->ctgs.size() == this->kmer2pos.size());
   }
@@ -37,6 +51,15 @@ class KmerIndex {
       counter[hash] = cnt;
       kmer2pos[name2index.at(name)][hash].push_back(pos);
     }
+    kmer2contig = GetKmer2Contig(kmer2pos);
+  }
+
+  [[nodiscard]] std::unordered_set<int64_t> GetContigIndexes(const Config::HashParams::htype &hash) const {
+    auto it = kmer2contig.find(hash);
+    if (it == kmer2contig.end()) {
+      return {};
+    }
+    return it->second;
   }
 
   std::vector<int64_t> NSolidKmers() const {

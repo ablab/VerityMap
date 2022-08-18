@@ -20,8 +20,9 @@ class Mapper {
                                                       const Contig &query,
                                                       const dna_strand::Strand &query_strand) const {
     chaining::Chains chains;
+    const std::vector<matches::Matches> all_matches = matcher.GetMatches(indexed_targets, query, query_strand);
     for (int i = 0; i < indexed_targets.Size(); ++i) {
-      const matches::Matches matches = matcher.GetMatches(indexed_targets, i, query, query_strand);
+      const matches::Matches &matches = all_matches.at(i);
       if (matches.size() < config.chaining_params.min_matches) {
         continue;
       }

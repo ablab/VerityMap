@@ -54,34 +54,37 @@ class Matcher {
       : config{config},
         hasher{hasher} {}
 
-  [[nodiscard]] Matches GetMatches(const indexed_contigs::IndexedContigs& indexed_targets, const int64_t i,
-                                   const Contig& query, const dna_strand::Strand& query_strand) const {
+  [[nodiscard]] std::vector<Matches> GetMatches(const indexed_contigs::IndexedContigs& indexed_targets,
+                                                const Contig& query, const dna_strand::Strand& query_strand) const {
+    std::vector<Matches> all_matches(indexed_targets.Size());
     Sequence seq = query_strand == dna_strand::Strand::forward ? query.seq : query.RC().seq;
     if (seq.size() < hasher.k) {
-      return {};
+      return all_matches;
     }
 
     // We are using approximate kmer detection
     // const double fpp{config.approximate_kmer_indexer_params.false_positive_probability};
     // BloomFilter rep_kmer_bf = veritymap::kmer_index::filter_rep_kmers::get_bloom_rep_kmers(seq, hasher, fpp);
 
-    Matches matches;
     KWH<Config::HashParams::htype> kwh(hasher, seq, 0);
     const kmer_index::KmerIndex& index = indexed_targets.Index();
     while (true) {
       const Config::HashParams::htype hash = kwh.get_fhash();
-      const std::vector<int64_t>* pos = index.GetPos(hash, i);
-      const int64_t count_i = pos == nullptr ? 0 : pos->size();
-      if (count_i) {
-        const int64_t count64 = index.GetCount(hash);
-        VERIFY(count64 >= count_i);
-        VERIFY(count64 <= config.max_rare_cnt_target);
-        VERIFY(count64 <= std::numeric_limits<uint8_t>::max());
-        const auto count = static_cast<uint8_t>(count64);
-        for (const int64_t tp : *pos) {
-          VERIFY(kwh.pos < std::numeric_limits<int32_t>::max());
-          matches.push_back(
-              {static_cast<Config::ChainingParams::match_pos_type>(tp), static_cast<int32_t>(kwh.pos), count});
+      for (const int64_t i : index.GetContigIndexes(hash)) {
+        Matches& matches = all_matches.at(i);
+        const std::vector<int64_t>* pos = index.GetPos(hash, i);
+        const int64_t count_i = pos == nullptr ? 0 : pos->size();
+        if (count_i) {
+          const int64_t count64 = index.GetCount(hash);
+          VERIFY(count64 >= count_i);
+          VERIFY(count64 <= config.max_rare_cnt_target);
+          VERIFY(count64 <= std::numeric_limits<uint8_t>::max());
+          const auto count = static_cast<uint8_t>(count64);
+          for (const int64_t tp : *pos) {
+            VERIFY(kwh.pos < std::numeric_limits<int32_t>::max());
+            matches.push_back(
+                {static_cast<Config::ChainingParams::match_pos_type>(tp), static_cast<int32_t>(kwh.pos), count});
+          }
         }
       }
       if (not kwh.hasNext()) {
@@ -89,8 +92,8 @@ class Matcher {
       }
       kwh = kwh.next();
     }
-    std::sort(matches.begin(), matches.end());
-    return matches;
+    for (Matches& matches : all_matches) { std::sort(matches.begin(), matches.end()); }
+    return all_matches;
   }
 };
 
