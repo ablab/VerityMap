@@ -62,19 +62,19 @@ class Matcher {
     }
 
     // We are using approximate kmer detection
-    const double fpp{config.approximate_kmer_indexer_params.false_positive_probability};
-    BloomFilter rep_kmer_bf = veritymap::kmer_index::filter_rep_kmers::get_bloom_rep_kmers(seq, hasher, fpp);
+    // const double fpp{config.approximate_kmer_indexer_params.false_positive_probability};
+    // BloomFilter rep_kmer_bf = veritymap::kmer_index::filter_rep_kmers::get_bloom_rep_kmers(seq, hasher, fpp);
 
     Matches matches;
     KWH<Config::HashParams::htype> kwh(hasher, seq, 0);
     const kmer_index::KmerIndex& index = indexed_targets.Index();
     while (true) {
       const Config::HashParams::htype hash = kwh.get_fhash();
-      const int64_t count64 = index.GetCount(hash);
       const std::vector<int64_t>* pos = index.GetPos(hash, i);
       const int64_t count_i = pos == nullptr ? 0 : pos->size();
-      VERIFY(count64 >= count_i);
-      if (not rep_kmer_bf.contains(hash) and count_i) {
+      if (count_i) {
+        const int64_t count64 = index.GetCount(hash);
+        VERIFY(count64 >= count_i);
         VERIFY(count64 <= config.max_rare_cnt_target);
         VERIFY(count64 <= std::numeric_limits<uint8_t>::max());
         const auto count = static_cast<uint8_t>(count64);
