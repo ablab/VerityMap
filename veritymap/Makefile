@@ -12,7 +12,7 @@ veritymap: cmake
 	$(MAKE) -C build all
 	mkdir -p build/bin
 	mv $(abspath build/src/projects/veritymap/veritymap) build/bin/veritymap
-	-rm -r build/bin/config
+	rm -rf build/bin/config
 	mv $(abspath build/src/projects/veritymap/config) build/bin
 
 test_launch: veritymap

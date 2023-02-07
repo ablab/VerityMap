@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include <sequences/contigs.hpp>
 #include <sequences/seqio.hpp>
 
