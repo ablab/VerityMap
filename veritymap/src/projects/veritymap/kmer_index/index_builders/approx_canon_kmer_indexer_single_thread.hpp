@@ -57,7 +57,7 @@ class ApproxCanonKmerIndexer : public AbstractKmerIndexBuilder {
           auto [freq, hash, fhash] = window.GetMinimizer();
           if (freq <= kmer_indexer_params.max_rare_cnt_target) {
             counter[fhash] = cms.est_count(hash);
-            k2p[fhash].emplace_back(kwh.pos);
+            k2p[fhash].emplace_back(cur_pos);
             latest_pos = cur_pos;
           }
         }
